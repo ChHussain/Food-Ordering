@@ -23,7 +23,6 @@ urlpatterns = [
     path('dashboard/orders/', views.manage_orders, name='manage_orders'),
     path('dashboard/orders/update/<int:order_id>/', views.update_order_status, name='update_order_status'),
     path('about/',views.about,name='about'),
-    path('contact/',views.contact,name='contact'),
     path('checkout/', views.checkout, name='checkout'),
     path('order-confirmation/', views.order_confirmation, name='order_confirmation'),
     path('my-orders/', views.my_orders, name='my_orders'),

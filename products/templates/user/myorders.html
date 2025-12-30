@@ -97,120 +97,6 @@
                                                 </button>
                                             </td>
                                         </tr>
-                                        
-                                        <!-- Order Modal -->
-                                        <div class="modal fade" id="orderModal{{ order.id }}" tabindex="-1">
-                                            <div class="modal-dialog modal-lg">
-                                                <div class="modal-content">
-                                                    <div class="modal-header bg-light">
-                                                        <h5 class="modal-title">
-                                                            <i class="bi bi-receipt"></i> Order #{{ order.id }} Details
-                                                        </h5>
-                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                    </div>
-                                                    <div class="modal-body">
-                                                        <!-- Status Badge -->
-                                                        <div class="text-center mb-4">
-                                                            {% if order.status == 'pending' %}
-                                                                <span class="badge bg-warning text-dark fs-6"><i class="bi bi-hourglass-split"></i> {{ order.get_status_display }}</span>
-                                                            {% elif order.status == 'confirmed' %}
-                                                                <span class="badge bg-info fs-6"><i class="bi bi-check-circle"></i> {{ order.get_status_display }}</span>
-                                                            {% elif order.status == 'preparing' %}
-                                                                <span class="badge bg-primary fs-6"><i class="bi bi-fire"></i> {{ order.get_status_display }}</span>
-                                                            {% elif order.status == 'on_delivery' %}
-                                                                <span class="badge bg-secondary fs-6"><i class="bi bi-truck"></i> {{ order.get_status_display }}</span>
-                                                            {% elif order.status == 'delivered' %}
-                                                                <span class="badge bg-success fs-6"><i class="bi bi-check-circle-fill"></i> {{ order.get_status_display }}</span>
-                                                            {% elif order.status == 'cancelled' %}
-                                                                <span class="badge bg-danger fs-6"><i class="bi bi-x-circle-fill"></i> {{ order.get_status_display }}</span>
-                                                            {% endif %}
-                                                        </div>
-
-                                                        <h6 class="border-bottom pb-2"><i class="bi bi-info-circle"></i> Order Information</h6>
-                                                        <div class="row mb-3">
-                                                            <div class="col-md-6">
-                                                                <p><strong>Order Date:</strong> {{ order.created_at|date:"M d, Y h:i A" }}</p>
-                                                                <p><strong>Customer:</strong> {{ order.customer_name }}</p>
-                                                                <p><strong>Phone:</strong> {{ order.customer_phone }}</p>
-                                                            </div>
-                                                            <div class="col-md-6">
-                                                                <p><strong>Payment:</strong> <span class="badge bg-success">{{ order.get_payment_method_display }}</span></p>
-                                                                <p><strong>Address:</strong> {{ order.customer_address }}</p>
-                                                            </div>
-                                                        </div>
-                                                        
-                                                        <h6 class="border-bottom pb-2 mt-3"><i class="bi bi-cart"></i> Order Items</h6>
-                                                        <table class="table table-sm table-hover">
-                                                            <thead class="table-light">
-                                                                <tr>
-                                                                    <th>Product</th>
-                                                                    <th class="text-center">Quantity</th>
-                                                                    <th class="text-end">Price</th>
-                                                                    <th class="text-end">Subtotal</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                {% for item in order.items.all %}
-                                                                <tr>
-                                                                    <td>{{ item.product.product_name }}</td>
-                                                                    <td class="text-center"><span class="badge bg-light text-dark">{{ item.quantity }}</span></td>
-                                                                    <td class="text-end">Rs. {{ item.price }}</td>
-                                                                    <td class="text-end"><strong>Rs. {{ item.subtotal }}</strong></td>
-                                                                </tr>
-                                                                {% endfor %}
-                                                            </tbody>
-                                                            <tfoot class="table-light">
-                                                                <tr>
-                                                                    <td colspan="3" class="text-end"><strong>Grand Total:</strong></td>
-                                                                    <td class="text-end"><strong class="text-success fs-5">Rs. {{ order.total_amount }}</strong></td>
-                                                                </tr>
-                                                            </tfoot>
-                                                        </table>
-                                                        
-                                                        {% if order.notes %}
-                                                        <h6 class="border-bottom pb-2 mt-3"><i class="bi bi-sticky"></i> Special Instructions</h6>
-                                                        <div class="alert alert-secondary">
-                                                            <em>"{{ order.notes }}"</em>
-                                                        </div>
-                                                        {% endif %}
-
-                                                        <!-- Order Progress Timeline -->
-                                                        <h6 class="border-bottom pb-2 mt-4"><i class="bi bi-clock-history"></i> Order Progress</h6>
-                                                        <div class="d-flex justify-content-between align-items-center mb-3">
-                                                            <div class="text-center text-success">
-                                                                <i class="bi bi-check-circle-fill fs-4"></i>
-                                                                <p class="small mb-0">Placed</p>
-                                                            </div>
-                                                            <div class="flex-grow-1 mx-2" style="height: 2px; background: {% if order.status == 'confirmed' or order.status == 'preparing' or order.status == 'on_delivery' or order.status == 'delivered' %}#28a745{% else %}#dee2e6{% endif %};"></div>
-                                                            <div class="text-center {% if order.status == 'confirmed' or order.status == 'preparing' or order.status == 'on_delivery' or order.status == 'delivered' %}text-success{% else %}text-muted{% endif %}">
-                                                                <i class="bi bi-{% if order.status == 'confirmed' or order.status == 'preparing' or order.status == 'on_delivery' or order.status == 'delivered' %}check-circle-fill{% else %}circle{% endif %} fs-4"></i>
-                                                                <p class="small mb-0">Confirmed</p>
-                                                            </div>
-                                                            <div class="flex-grow-1 mx-2" style="height: 2px; background: {% if order.status == 'preparing' or order.status == 'on_delivery' or order.status == 'delivered' %}#28a745{% else %}#dee2e6{% endif %};"></div>
-                                                            <div class="text-center {% if order.status == 'preparing' or order.status == 'on_delivery' or order.status == 'delivered' %}text-success{% else %}text-muted{% endif %}">
-                                                                <i class="bi bi-{% if order.status == 'preparing' or order.status == 'on_delivery' or order.status == 'delivered' %}check-circle-fill{% else %}circle{% endif %} fs-4"></i>
-                                                                <p class="small mb-0">Preparing</p>
-                                                            </div>
-                                                            <div class="flex-grow-1 mx-2" style="height: 2px; background: {% if order.status == 'on_delivery' or order.status == 'delivered' %}#28a745{% else %}#dee2e6{% endif %};"></div>
-                                                            <div class="text-center {% if order.status == 'on_delivery' or order.status == 'delivered' %}text-success{% else %}text-muted{% endif %}">
-                                                                <i class="bi bi-{% if order.status == 'on_delivery' or order.status == 'delivered' %}check-circle-fill{% else %}circle{% endif %} fs-4"></i>
-                                                                <p class="small mb-0">On Delivery</p>
-                                                            </div>
-                                                            <div class="flex-grow-1 mx-2" style="height: 2px; background: {% if order.status == 'delivered' %}#28a745{% else %}#dee2e6{% endif %};"></div>
-                                                            <div class="text-center {% if order.status == 'delivered' %}text-success{% else %}text-muted{% endif %}">
-                                                                <i class="bi bi-{% if order.status == 'delivered' %}check-circle-fill{% else %}circle{% endif %} fs-4"></i>
-                                                                <p class="small mb-0">Delivered</p>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                                                            <i class="bi bi-x-circle"></i> Close
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
                                         {% endfor %}
                                     </tbody>
                                 </table>
@@ -276,85 +162,6 @@
                                                 </button>
                                             </td>
                                         </tr>
-                                        
-                                        <!-- Same modal structure as above -->
-                                        <div class="modal fade" id="orderModal{{ order.id }}" tabindex="-1">
-                                            <div class="modal-dialog modal-lg">
-                                                <div class="modal-content">
-                                                    <div class="modal-header bg-light">
-                                                        <h5 class="modal-title">
-                                                            <i class="bi bi-receipt"></i> Order #{{ order.id }} Details
-                                                        </h5>
-                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                    </div>
-                                                    <div class="modal-body">
-                                                        <div class="text-center mb-4">
-                                                            {% if order.status == 'delivered' %}
-                                                                <span class="badge bg-success fs-6"><i class="bi bi-check-circle-fill"></i> {{ order.get_status_display }}</span>
-                                                            {% elif order.status == 'cancelled' %}
-                                                                <span class="badge bg-danger fs-6"><i class="bi bi-x-circle-fill"></i> {{ order.get_status_display }}</span>
-                                                            {% endif %}
-                                                        </div>
-
-                                                        <h6 class="border-bottom pb-2"><i class="bi bi-info-circle"></i> Order Information</h6>
-                                                        <div class="row mb-3">
-                                                            <div class="col-md-6">
-                                                                <p><strong>Order Date:</strong> {{ order.created_at|date:"M d, Y h:i A" }}</p>
-                                                                <p><strong>Customer:</strong> {{ order.customer_name }}</p>
-                                                                <p><strong>Phone:</strong> {{ order.customer_phone }}</p>
-                                                            </div>
-                                                            <div class="col-md-6">
-                                                                <p><strong>Payment:</strong> <span class="badge bg-success">{{ order.get_payment_method_display }}</span></p>
-                                                                <p><strong>Address:</strong> {{ order.customer_address }}</p>
-                                                                {% if order.status == 'delivered' %}
-                                                                <p><strong>Completed:</strong> {{ order.updated_at|date:"M d, Y h:i A" }}</p>
-                                                                {% endif %}
-                                                            </div>
-                                                        </div>
-                                                        
-                                                        <h6 class="border-bottom pb-2 mt-3"><i class="bi bi-cart"></i> Order Items</h6>
-                                                        <table class="table table-sm">
-                                                            <thead class="table-light">
-                                                                <tr>
-                                                                    <th>Product</th>
-                                                                    <th class="text-center">Quantity</th>
-                                                                    <th class="text-end">Price</th>
-                                                                    <th class="text-end">Subtotal</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                {% for item in order.items.all %}
-                                                                <tr>
-                                                                    <td>{{ item.product.product_name }}</td>
-                                                                    <td class="text-center"><span class="badge bg-light text-dark">{{ item.quantity }}</span></td>
-                                                                    <td class="text-end">Rs. {{ item.price }}</td>
-                                                                    <td class="text-end"><strong>Rs. {{ item.subtotal }}</strong></td>
-                                                                </tr>
-                                                                {% endfor %}
-                                                            </tbody>
-                                                            <tfoot class="table-light">
-                                                                <tr>
-                                                                    <td colspan="3" class="text-end"><strong>Grand Total:</strong></td>
-                                                                    <td class="text-end"><strong class="text-success fs-5">Rs. {{ order.total_amount }}</strong></td>
-                                                                </tr>
-                                                            </tfoot>
-                                                        </table>
-                                                        
-                                                        {% if order.notes %}
-                                                        <h6 class="border-bottom pb-2 mt-3"><i class="bi bi-sticky"></i> Special Instructions</h6>
-                                                        <div class="alert alert-secondary">
-                                                            <em>"{{ order.notes }}"</em>
-                                                        </div>
-                                                        {% endif %}
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                                                            <i class="bi bi-x-circle"></i> Close
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
                                         {% endfor %}
                                     </tbody>
                                 </table>
@@ -385,5 +192,127 @@
         </div>
     </div>
 </div>
+
+<!-- ALL MODALS OUTSIDE TABS - Loop through ALL orders once -->
+{% for order in orders %}
+<div class="modal fade" id="orderModal{{ order.id }}" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title">
+                    <i class="bi bi-receipt"></i> Order #{{ order.id }} Details
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Status Badge -->
+                <div class="text-center mb-4">
+                    {% if order.status == 'pending' %}
+                        <span class="badge bg-warning text-dark fs-6"><i class="bi bi-hourglass-split"></i> {{ order.get_status_display }}</span>
+                    {% elif order.status == 'confirmed' %}
+                        <span class="badge bg-info fs-6"><i class="bi bi-check-circle"></i> {{ order.get_status_display }}</span>
+                    {% elif order.status == 'preparing' %}
+                        <span class="badge bg-primary fs-6"><i class="bi bi-fire"></i> {{ order.get_status_display }}</span>
+                    {% elif order.status == 'on_delivery' %}
+                        <span class="badge bg-secondary fs-6"><i class="bi bi-truck"></i> {{ order.get_status_display }}</span>
+                    {% elif order.status == 'delivered' %}
+                        <span class="badge bg-success fs-6"><i class="bi bi-check-circle-fill"></i> {{ order.get_status_display }}</span>
+                    {% elif order.status == 'cancelled' %}
+                        <span class="badge bg-danger fs-6"><i class="bi bi-x-circle-fill"></i> {{ order.get_status_display }}</span>
+                    {% endif %}
+                </div>
+
+                <h6 class="border-bottom pb-2"><i class="bi bi-info-circle"></i> Order Information</h6>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <p><strong>Order Date:</strong> {{ order.created_at|date:"M d, Y h:i A" }}</p>
+                        <p><strong>Customer:</strong> {{ order.customer_name }}</p>
+                        <p><strong>Phone:</strong> {{ order.customer_phone }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Payment:</strong> <span class="badge bg-success">{{ order.get_payment_method_display }}</span></p>
+                        <p><strong>Address:</strong> {{ order.customer_address }}</p>
+                        {% if order.status == 'delivered' or order.status == 'cancelled' %}
+                        <p><strong>{% if order.status == 'delivered' %}Completed{% else %}Cancelled{% endif %}:</strong> {{ order.updated_at|date:"M d, Y h:i A" }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <h6 class="border-bottom pb-2 mt-3"><i class="bi bi-cart"></i> Order Items</h6>
+                <table class="table table-sm table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Product</th>
+                            <th class="text-center">Quantity</th>
+                            <th class="text-end">Price</th>
+                            <th class="text-end">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in order.items.all %}
+                        <tr>
+                            <td>{{ item.product.product_name }}</td>
+                            <td class="text-center"><span class="badge bg-light text-dark">{{ item.quantity }}</span></td>
+                            <td class="text-end">Rs. {{ item.price }}</td>
+                            <td class="text-end"><strong>Rs. {{ item.subtotal }}</strong></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="table-light">
+                        <tr>
+                            <td colspan="3" class="text-end"><strong>Grand Total:</strong></td>
+                            <td class="text-end"><strong class="text-success fs-5">Rs. {{ order.total_amount }}</strong></td>
+                        </tr>
+                    </tfoot>
+                </table>
+                
+                {% if order.notes %}
+                <h6 class="border-bottom pb-2 mt-3"><i class="bi bi-sticky"></i> Special Instructions</h6>
+                <div class="alert alert-secondary">
+                    <em>"{{ order.notes }}"</em>
+                </div>
+                {% endif %}
+
+                <!-- Order Progress Timeline (only for non-cancelled orders) -->
+                {% if order.status != 'cancelled' %}
+                <h6 class="border-bottom pb-2 mt-4"><i class="bi bi-clock-history"></i> Order Progress</h6>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="text-center text-success">
+                        <i class="bi bi-check-circle-fill fs-4"></i>
+                        <p class="small mb-0">Placed</p>
+                    </div>
+                    <div class="flex-grow-1 mx-2" style="height: 2px; background: {% if order.status == 'confirmed' or order.status == 'preparing' or order.status == 'on_delivery' or order.status == 'delivered' %}#28a745{% else %}#dee2e6{% endif %};"></div>
+                    <div class="text-center {% if order.status == 'confirmed' or order.status == 'preparing' or order.status == 'on_delivery' or order.status == 'delivered' %}text-success{% else %}text-muted{% endif %}">
+                        <i class="bi bi-{% if order.status == 'confirmed' or order.status == 'preparing' or order.status == 'on_delivery' or order.status == 'delivered' %}check-circle-fill{% else %}circle{% endif %} fs-4"></i>
+                        <p class="small mb-0">Confirmed</p>
+                    </div>
+                    <div class="flex-grow-1 mx-2" style="height: 2px; background: {% if order.status == 'preparing' or order.status == 'on_delivery' or order.status == 'delivered' %}#28a745{% else %}#dee2e6{% endif %};"></div>
+                    <div class="text-center {% if order.status == 'preparing' or order.status == 'on_delivery' or order.status == 'delivered' %}text-success{% else %}text-muted{% endif %}">
+                        <i class="bi bi-{% if order.status == 'preparing' or order.status == 'on_delivery' or order.status == 'delivered' %}check-circle-fill{% else %}circle{% endif %} fs-4"></i>
+                        <p class="small mb-0">Preparing</p>
+                    </div>
+                    <div class="flex-grow-1 mx-2" style="height: 2px; background: {% if order.status == 'on_delivery' or order.status == 'delivered' %}#28a745{% else %}#dee2e6{% endif %};"></div>
+                    <div class="text-center {% if order.status == 'on_delivery' or order.status == 'delivered' %}text-success{% else %}text-muted{% endif %}">
+                        <i class="bi bi-{% if order.status == 'on_delivery' or order.status == 'delivered' %}check-circle-fill{% else %}circle{% endif %} fs-4"></i>
+                        <p class="small mb-0">On Delivery</p>
+                    </div>
+                    <div class="flex-grow-1 mx-2" style="height: 2px; background: {% if order.status == 'delivered' %}#28a745{% else %}#dee2e6{% endif %};"></div>
+                    <div class="text-center {% if order.status == 'delivered' %}text-success{% else %}text-muted{% endif %}">
+                        <i class="bi bi-{% if order.status == 'delivered' %}check-circle-fill{% else %}circle{% endif %} fs-4"></i>
+                        <p class="small mb-0">Delivered</p>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
 <br><br>
 {% endblock %}

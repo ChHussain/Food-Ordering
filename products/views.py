@@ -94,8 +94,7 @@ def menu(request):
 
 def about(request):
     return render(request,'user/about.html')
-def contact(request):
-    return render(request,'user/contact.html')
+
 @login_required(login_url='/login/')
 def cart_view(request):
     
