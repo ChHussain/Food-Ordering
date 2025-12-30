@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Checkout - Hussain's{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8"> 
+            <div class="card shadow-lg">
+                <div class="card-header text-center bg-primary text-white">
+                    <h3><i class="bi bi-credit-card"></i> Checkout</h3>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                    
+                    <!-- Order Summary -->
+                    <div class="mb-4">
+                        <h5 class="border-bottom pb-2"><i class="bi bi-receipt"></i> Order Summary</h5>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Quantity</th>
+                                        <th>Price</th>
+                                        <th>Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in cart_items %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ item.product.product_name }}</strong>
+                                        </td>
+                                        <td>{{ item.quantity }}</td>
+                                        <td>Rs. {{ item.product.product_price }}</td>
+                                        <td><strong>Rs. {{ item.total_price }}</strong></td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot>
+                                    <tr class="table-success">
+                                        <td colspan="3" class="text-end"><strong>Grand Total:</strong></td>
+                                        <td><strong class="text-success fs-5">Rs. {{ total_amount }}</strong></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Payment Method Badge -->
+                    <div class="alert alert-info d-flex align-items-center mb-4">
+                        <i class="bi bi-cash-coin fs-3 me-3"></i>
+                        <div>
+                            <strong>Payment Method:</strong> Cash on Delivery<br>
+                            <small>Pay when you receive your order</small>
+                        </div>
+                    </div>
+
+                    <!-- Checkout Form -->
+                    <form method="POST" action="{% url 'checkout' %}">
+                        {% csrf_token %}
+                        
+                        <h5 class="border-bottom pb-2 mb-3"><i class="bi bi-geo-alt"></i> Delivery Information</h5>
+                        
+                        <div class="mb-3">
+                            <label for="full_name" class="form-label">Full Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="full_name" name="full_name" 
+                                   placeholder="Enter your full name" 
+                                   value="{% if request.user.first_name %}{{ request.user.first_name }} {{ request.user.last_name }}{% endif %}"
+                                   required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="phone_number" class="form-label">Phone Number <span class="text-danger">*</span></label>
+                            <input type="tel" class="form-control" id="phone_number" name="phone_number" 
+                                   placeholder="+92 300 1234567"
+                                   value="{{ request.user.phone_number }}"
+                                   required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="address" class="form-label">Delivery Address <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="address" name="address" rows="3" 
+                                      placeholder="House/Flat No., Street Name, Area, City" 
+                                      required></textarea>
+                            <div class="form-text">Please provide complete address for accurate delivery</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Order Notes <small>(Optional)</small></label>
+                            <textarea class="form-control" id="notes" name="notes" rows="2" 
+                                      placeholder="Special instructions for your order (e.g., less spicy, extra sauce)"></textarea>
+                        </div>
+                        
+                        <!-- Hidden field for payment method -->
+                        <input type="hidden" name="payment_method" value="cash_on_delivery">
+                        
+                        <div class="alert alert-warning">
+                            <i class="bi bi-clock"></i> <strong>Estimated Delivery:</strong> 30-45 minutes
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="bi bi-check-circle"></i> Place Order - Rs. {{ total_amount }}
+                            </button>
+                            <a href="{% url 'cart' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left"></i> Back to Cart
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<br>
+{% endblock %}
