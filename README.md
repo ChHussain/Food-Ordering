@@ -62,7 +62,17 @@ This Food Ordering System is a comprehensive web application that allows custome
 
 3. **Install dependencies**
    ```bash
-   pip install django pillow
+   pip install django>=5.2,<5.3 pillow>=10.0
+   ```
+   
+   Or create a `requirements.txt` file:
+   ```
+   Django>=5.2,<5.3
+   Pillow>=10.0
+   ```
+   Then install with:
+   ```bash
+   pip install -r requirements.txt
    ```
 
 4. **Apply database migrations**
@@ -144,8 +154,9 @@ Food-Ordering/
 ### Authentication
 
 The system uses a custom user model with phone number authentication:
-- Username field: Phone number (Pakistani format)
-- Password validation: Minimum 8 characters with uppercase and lowercase letters
+- Username field: Phone number in Pakistani format (e.g., 03011234567 or +923011234567)
+  - Pattern: `03XXXXXXXXX` (11 digits starting with 03) or `+923XXXXXXXXX` (with country code)
+- Password validation: Minimum 8 characters with at least one uppercase and one lowercase letter
 
 ## 📊 Database Models
 
