@@ -29,17 +29,73 @@
     <div class="col-md-3 col-sm-6">
         <div class="card stats-card bg-warning">
             <h5>Pending Orders</h5>
-            <h2>{{ pending_orders }}</h2>
+            <h2>{{ pending_orders_count }}</h2>
             <small><i class="bi bi-clock"></i> Awaiting Action</small>
         </div>
     </div>
     <div class="col-md-3 col-sm-6">
         <div class="card stats-card bg-info">
             <h5>Revenue</h5>
-            <h2>Rs1,234</h2>
+            <h2>Rs. {{ total_revenue|floatformat:0 }}</h2>
             <small><i class="bi bi-currency-dollar"></i> This Month</small>
         </div>
     </div>
+</div>
+
+<!-- Recent Orders Section -->
+<div class="dashboard-table mb-4">
+    <h3><i class="bi bi-receipt"></i> Recent Orders</h3>
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Order #</th>
+                    <th>Customer</th>
+                    <th>Items</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in recent_orders %}
+                <tr>
+                    <td><strong>#{{ order.id }}</strong></td>
+                    <td>{{ order.customer_name }}</td>
+                    <td>{{ order.items.count }} item(s)</td>
+                    <td><strong class="text-success">Rs. {{ order.total_amount }}</strong></td>
+                    <td>
+                        {% if order.status == 'pending' %}
+                            <span class="badge bg-warning text-dark">Pending</span>
+                        {% elif order.status == 'confirmed' %}
+                            <span class="badge bg-info">Confirmed</span>
+                        {% elif order.status == 'preparing' %}
+                            <span class="badge bg-primary">Preparing</span>
+                        {% elif order.status == 'on_delivery' %}
+                            <span class="badge bg-secondary">On Delivery</span>
+                        {% elif order.status == 'delivered' %}
+                            <span class="badge bg-success">Delivered</span>
+                        {% elif order.status == 'cancelled' %}
+                            <span class="badge bg-danger">Cancelled</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ order.created_at|date:"M d, Y" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center">
+                        <div class="empty-state">
+                            <i class="bi bi-inbox"></i>
+                            <h3>No orders yet</h3>
+                            <p>Orders will appear here once customers start ordering.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <a href="{% url 'manage_orders' %}" class="btn btn-outline-primary">View All Orders <i class="bi bi-arrow-right"></i></a>
 </div>
 
 <!-- Recent Products -->
@@ -51,9 +107,9 @@
                 <tr>
                     <th>Image</th>
                     <th>Name</th>
-                    <th>Price</th>
+                    <th>Base Price</th>
                     <th>Quantity</th>
-                    <th>Status</th>
+                    <th>Variations</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -68,16 +124,20 @@
                         {% endif %}
                     </td>
                     <td>{{ product.product_name }}</td>
-                    <td>Rs.{{ product.product_price }}</td>
+                    <td>Rs. {{ product.product_price }}</td>
                     <td>{{ product.quantity }} {{ product.get_product_measuring_display }}</td>
                     <td>
-                        <span class="badge bg-success">Active</span>
+                        {% if product.variations.count > 0 %}
+                            <span class="badge bg-success">{{ product.variations.count }}</span>
+                        {% else %}
+                            <span class="badge bg-secondary">0</span>
+                        {% endif %}
                     </td>
                     <td class="action-buttons">
-                        <a href="{% url 'edit_product' product.id %}" class="btn btn-sm btn-warning">
+                        <a href="{% url 'edit_product' product.product_slug %}" class="btn btn-sm btn-warning">
                             <i class="bi bi-pencil"></i>
                         </a>
-                        <a href="{% url 'delete_product' product.id %}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">
+                        <a href="{% url 'delete_product' product.product_slug %}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">
                             <i class="bi bi-trash"></i>
                         </a>
                     </td>

@@ -54,6 +54,18 @@
                             {% endfor %}
                         </select>
                     </div>
+                    <div class="mb-3">
+    <label for="category" class="form-label">Category</label>
+    <select class="form-select" id="category" name="category">
+        <option value="">-- No Category --</option>
+        {% for cat in categories %}
+            <option value="{{ cat.id }}" {% if product.category.id == cat.id %}selected{% endif %}>
+                {{ cat.category_name }}
+            </option>
+        {% endfor %}
+    </select>
+    <small class="text-muted">Organize your products by category</small>
+</div>
 
                     <div class="mb-3">
                         <label for="description" class="form-label">Description *</label>

@@ -1,0 +1,186 @@
+{% extends "dashbase.html" %}
+
+{% block title %}Manage Categories - Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-tags"></i> Manage Categories</h1>
+    <a href="{% url 'add_category' %}" class="btn btn-primary btn-dashboard">
+        <i class="bi bi-plus-circle"></i> Add New Category
+    </a>
+</div>
+
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endfor %}
+{% endif %}
+
+<div class="dashboard-table">
+    {% if categories %}
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <p class="text-muted mb-0">
+                <i class="bi bi-info-circle"></i> 
+                Showing {{ categories.count }} categor{{ categories.count|pluralize:"y,ies" }}
+            </p>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th style="width: 60px;">Order</th>
+                    <th style="width: 100px;">Image</th>
+                    <th>Category Name</th>
+                    <th>Description</th>
+                    <th class="text-center">Products</th>
+                    <th class="text-center">Status</th>
+                    <th class="text-center" style="width: 200px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for category in categories %}
+                <tr {% if not category.is_active %}class="table-secondary"{% endif %}>
+                    <td class="text-center">
+                        <span class="badge bg-light text-dark">{{ category.display_order }}</span>
+                    </td>
+                    <td>
+                        {% if category.category_image %}
+                            <img src="{{ category.category_image.url }}" 
+                                 alt="{{ category.category_name }}" 
+                                 class="rounded"
+                                 style="width: 60px; height: 60px; object-fit: cover;">
+                        {% else %}
+                            <div class="bg-light rounded d-flex align-items-center justify-content-center"
+                                 style="width: 60px; height: 60px;">
+                                <i class="bi bi-image text-muted fs-4"></i>
+                            </div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <strong class="{% if not category.is_active %}text-muted{% endif %}">
+                            {{ category.category_name }}
+                        </strong>
+                        <br>
+                        <small class="text-muted">
+                            <i class="bi bi-link-45deg"></i> {{ category.category_slug }}
+                        </small>
+                    </td>
+                    <td>
+                        {% if category.category_description %}
+                            <span class="text-muted">{{ category.category_description|truncatechars:80 }}</span>
+                        {% else %}
+                            <span class="text-muted fst-italic">No description</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        {% if category.product_count > 0 %}
+                            <a href="{% url 'menu' %}?category={{ category.category_slug }}" 
+                               class="badge bg-success text-decoration-none"
+                               target="_blank">
+                                {{ category.product_count }} product{{ category.product_count|pluralize }}
+                            </a>
+                        {% else %}
+                            <span class="badge bg-secondary">0 products</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        {% if category.is_active %}
+                            <span class="badge bg-success">
+                                <i class="bi bi-check-circle"></i> Active
+                            </span>
+                        {% else %}
+                            <span class="badge bg-secondary">
+                                <i class="bi bi-x-circle"></i> Inactive
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        <div class="btn-group" role="group">
+                            <!-- Toggle Status -->
+                            <a href="{% url 'toggle_category_status' category.id %}" 
+                               class="btn btn-sm {% if category.is_active %}btn-warning{% else %}btn-success{% endif %}"
+                               title="{% if category.is_active %}Deactivate{% else %}Activate{% endif %}">
+                                <i class="bi bi-{% if category.is_active %}eye-slash{% else %}eye{% endif %}"></i>
+                            </a>
+                            
+                            <!-- Edit -->
+                            <a href="{% url 'edit_category' category.id %}" 
+                               class="btn btn-sm btn-primary"
+                               title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            
+                            <!-- Delete -->
+                            <a href="{% url 'delete_category' category.id %}" 
+                               class="btn btn-sm btn-danger"
+                               onclick="return confirm('⚠️ Delete category \"{{ category.category_name }}\"?\n\nThis will fail if the category has products assigned to it.');"
+                               title="Delete">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Category Stats -->
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <div class="card bg-primary text-white">
+                <div class="card-body text-center">
+                    <h3 class="mb-0">{{ categories.count }}</h3>
+                    <p class="mb-0"><i class="bi bi-tags"></i> Total Categories</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center">
+                    <h3 class="mb-0">{{ categories|length|add:"-1"|add:categories.count }}</h3>
+                    <p class="mb-0"><i class="bi bi-check-circle"></i> Active Categories</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-info text-white">
+                <div class="card-body text-center">
+                    <h3 class="mb-0">
+                        {% widthratio categories|length 1 1 %}
+                    </h3>
+                    <p class="mb-0"><i class="bi bi-box-seam"></i> Products Categorized</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% else %}
+    <div class="empty-state">
+        <i class="bi bi-inbox"></i>
+        <h3>No categories yet</h3>
+        <p class="text-muted">Start organizing your menu by creating categories!</p>
+        <a href="{% url 'add_category' %}" class="btn btn-primary mt-3">
+            <i class="bi bi-plus-circle"></i> Create First Category
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Info Alert -->
+<div class="alert alert-info mt-4">
+    <h6><i class="bi bi-info-circle"></i> Category Management Tips:</h6>
+    <ul class="mb-0">
+        <li><strong>Display Order:</strong> Lower numbers appear first in menus (e.g., 1, 2, 3)</li>
+        <li><strong>Active Status:</strong> Inactive categories won't show on the customer menu</li>
+        <li><strong>Deleting:</strong> You can only delete categories that have no products assigned</li>
+        <li><strong>Best Practice:</strong> Use clear, descriptive names like "Biryani", "Fast Food", "Beverages"</li>
+    </ul>
+</div>
+{% endblock %}

@@ -1,38 +1,67 @@
 {% extends "dashbase.html" %}
+
+{% block title %}Add Product - Dashboard{% endblock %}
+
 {% block content %}
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header text-center">
-                    <h3>Add New Product</h3>
-                </div>
-                <div class="card-body">
-                    {% if messages %}
-                        {% for message in messages %}
-                            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-                        {% endfor %}
-                    {% endif %}
-                    <form method="POST" enctype="multipart/form-data"> 
-                        {% csrf_token %}
-                        <div class="mb-3">
-                            <label for="name" class="form-label">Product Name</label>
-                            <input type="text" class="form-control" id="name" name="name" required>
+<div class="page-header">
+    <h1><i class="bi bi-plus-circle"></i> Add New Product</h1>
+    <a href="{% url 'manage_products' %}" class="btn btn-secondary btn-dashboard">
+        <i class="bi bi-arrow-left"></i> Back to Products
+    </a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="bi bi-box-seam"></i> Product Details</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data" id="productForm">
+                    {% csrf_token %}
+                    
+                    <!-- Basic Product Information -->
+                    <h5 class="border-bottom pb-2 mb-3"><i class="bi bi-info-circle"></i> Basic Information</h5>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="name" class="form-label">Product Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="name" name="name" placeholder="e.g., Chicken Biryani" required>
                         </div>
-                        <div class="mb-3">
-                            <label for="description" class="form-label">Description</label>
-                            <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="category" class="form-label">Category</label>
+                            <select class="form-select" id="category" name="category">
+                                <option value="">-- No Category --</option>
+                                {% for cat in categories %}
+                                    <option value="{{ cat.id }}">{{ cat.category_name }}</option>
+                                {% endfor %}
+                            </select>
                         </div>
-                        <div class="mb-3">
-                            <label for="price" class="form-label">Price</label>
-                            <input type="number" class="form-control" id="price" name="price" required>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="price" class="form-label">Base Price (Rs.) <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="price" name="price" placeholder="500" required>
+                            <small class="text-muted">This will be the default price if no variations</small>
                         </div>
-                        <div class="mb-3">
-                            <label for="quantity" class="form-label">Quantity</label>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="demo_price" class="form-label">Original Price (Rs.)</label>
+                            <input type="number" class="form-control" id="demo_price" name="demo_price" placeholder="600">
+                            <small class="text-muted">For discount display</small>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="quantity" class="form-label">Quantity <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="quantity" name="quantity" placeholder="e.g., 500, 1, 2" required>
                         </div>
-                        <div class="mb-3">
-                            <label for="product_measuring" class="form-label">Unit of Measurement</label>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="product_measuring" class="form-label">Unit <span class="text-danger">*</span></label>
                             <select class="form-select" id="product_measuring" name="product_measuring" required>
                                 <option value="">Select Unit</option>
                                 {% for value, label in measuring_choices %}
@@ -40,16 +69,169 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        <div class="mb-3">
-                            <label for="image" class="form-label">Product Image</label>
-                            <input type="file" class="form-control" id="image" name="image" accept="image/*" required>
-                        </div>
-                        <button type="submit" class="btn btn-primary w-100">Add Product</button>
-                        <a href="{% url 'manage_products' %}" class="btn btn-secondary w-100 mt-2">Cancel</a>
-                    </form>
+                        
+                       
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="description" name="description" rows="4" placeholder="Describe your product..." required></textarea>
                 </div>
+
+                    <div class="mb-3">
+                        <label for="image" class="form-label">Product Image</label>
+                        <input type="file" class="form-control" id="image" name="image" accept="image/*">
+                        
+                        <!-- Image Preview -->
+                        <div id="imagePreview" class="mt-3" style="display: none;">
+                            <p class="text-muted mb-2">Preview:</p>
+                            <img id="preview" src="" alt="Preview" class="img-thumbnail" style="max-width: 200px; max-height: 200px; object-fit: cover;">
+                        </div>
+                    </div>
+
+                    <!-- ✅ NEW: Variations Section -->
+                    <hr class="my-4">
+                    <h5 class="border-bottom pb-2 mb-3">
+                        <i class="bi bi-sliders"></i> Product Variations (Optional)
+                    </h5>
+                    
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> <strong>Tip:</strong> Add size variations like "0.5 KG", "1 KG", "Family Pack", etc. Each variation can have its own price.
+                    </div>
+
+                    <div id="variationsContainer" class="mb-3">
+                        <!-- Variations will be added here dynamically -->
+                    </div>
+
+                    <button type="button" class="btn btn-outline-primary mb-3" onclick="addVariation()">
+                        <i class="bi bi-plus-circle"></i> Add Variation
+                    </button>
+                    
+                    <!-- Hidden field to track variation count -->
+                    <input type="hidden" name="variation_count" id="variationCount" value="0">
+
+                    <div class="alert alert-warning">
+                        <i class="bi bi-lightbulb"></i> <strong>Note:</strong> You can also add variations later from the "Manage Products" page.
+                    </div>
+
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle"></i> Add Product
+                        </button>
+                        <a href="{% url 'manage_products' %}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+// Image Preview
+document.getElementById('image').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('preview').src = e.target.result;
+            document.getElementById('imagePreview').style.display = 'block';
+        }
+        reader.readAsDataURL(file);
+    } else {
+        document.getElementById('imagePreview').style.display = 'none';
+    }
+});
+
+// ✅ NEW: Variation Management JavaScript
+let variationCounter = 0;
+
+function addVariation() {
+    variationCounter++;
+    const container = document.getElementById('variationsContainer');
+    
+    const variationDiv = document.createElement('div');
+    variationDiv.className = 'card mb-3 variation-card';
+    variationDiv.id = `variation_${variationCounter}`;
+    
+    variationDiv.innerHTML = `
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <h6 class="mb-0"><i class="bi bi-sliders"></i> Variation #${variationCounter}</h6>
+            <button type="button" class="btn btn-sm btn-danger" onclick="removeVariation(${variationCounter})">
+                <i class="bi bi-trash"></i> Remove
+            </button>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Variation Name <span class="text-danger">*</span></label>
+                    <input type="text" name="variation_name_${variationCounter}" class="form-control" placeholder="e.g., 0.5 KG, 1 KG, Large">
+                    <small class="text-muted">Examples: "0.5 KG", "1 KG", "Family Pack"</small>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Variation Price (Rs.) <span class="text-danger">*</span></label>
+                    <input type="number" name="variation_price_${variationCounter}" class="form-control" placeholder="500">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Original Price (Rs.)</label>
+                    <input type="number" name="variation_demo_price_${variationCounter}" class="form-control" placeholder="600">
+                    <small class="text-muted">Leave blank if no discount</small>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Stock Quantity</label>
+                    <input type="number" name="stock_quantity_${variationCounter}" class="form-control" value="0" min="0">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label d-block">Available?</label>
+                    <div class="form-check form-switch mt-2">
+                        <input class="form-check-input" type="checkbox" name="is_available_${variationCounter}" id="is_available_${variationCounter}" checked>
+                        <label class="form-check-label" for="is_available_${variationCounter}">
+                            Available for customers
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    container.appendChild(variationDiv);
+    document.getElementById('variationCount').value = variationCounter;
+    
+    // Scroll to the new variation
+    variationDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function removeVariation(id) {
+    const element = document.getElementById(`variation_${id}`);
+    if (element) {
+        element.remove();
+    }
+    
+    // Update variation count
+    const remainingVariations = document.querySelectorAll('.variation-card').length;
+    document.getElementById('variationCount').value = remainingVariations;
+}
+
+// Auto-sync demo price with price if left empty (optional enhancement)
+document.getElementById('price').addEventListener('input', function() {
+    const demoPrice = document.getElementById('demo_price');
+    if (!demoPrice.value) {
+        demoPrice.value = this.value;
+    }
+});
+</script>
+
+<style>
+.variation-card {
+    border-left: 4px solid #007bff;
+    transition: all 0.3s ease;
+}
+
+.variation-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+</style>
 {% endblock %}

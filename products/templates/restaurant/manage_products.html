@@ -18,9 +18,10 @@
                 <tr>  
                     <th>Image</th>
                     <th>Name</th>
-                    <th>Price</th>
+                    <th>Base Price</th>
                     <th>Quantity</th>
                     <th>Unit</th>
+                    <th>Variations</th>
                     <th>Description</th>
                     <th>Actions</th>
                 </tr>
@@ -37,19 +38,31 @@
                     </td>
                     <td><strong>{{ product.product_name }}</strong></td>
                     <td>
-                        <span class="text-success fw-bold">Rs.{{ product.product_price }}</span>
+                        <span class="text-success fw-bold">Rs. {{ product.product_price }}</span>
                         {% if product.product_demo_price != product.product_price %}
-                            <br><small class="text-muted text-decoration-line-through">Rs.{{ product.product_demo_price }}</small>
+                            <br><small class="text-muted text-decoration-line-through">Rs. {{ product.product_demo_price }}</small>
                         {% endif %}
                     </td>
                     <td>{{ product.quantity }}</td>
                     <td><span class="badge bg-info">{{ product.get_product_measuring_display }}</span></td>
+                    <td>
+                        {% if product.variations.count > 0 %}
+                            <span class="badge bg-success">{{ product.variations.count }} variation(s)</span>
+                        {% else %}
+                            <span class="badge bg-secondary">No variations</span>
+                        {% endif %}
+                    </td>
                     <td>{{ product.product_description|truncatechars:50 }}</td>
                     <td class="action-buttons">
-                        <a href="{% url 'edit_product' product.id %}" class="btn btn-sm btn-warning" title="Edit">
+                        <!-- Manage Variations Button -->
+                        <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#variationsModal{{ product.id }}" title="Manage Variations">
+                            <i class="bi bi-sliders"></i> Variations
+                        </button>
+                        
+                        <a href="{% url 'edit_product' product.product_slug %}" class="btn btn-sm btn-warning" title="Edit">
                             <i class="bi bi-pencil"></i> Edit
                         </a>
-                        <a href="{% url 'delete_product' product.id %}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete {{ product.product_name }}?');" title="Delete">
+                        <a href="{% url 'delete_product' product.product_slug %}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete {{ product.product_name }}?');" title="Delete">
                             <i class="bi bi-trash"></i> Delete
                         </a>
                     </td>
@@ -69,4 +82,188 @@
     </div>
     {% endif %} 
 </div>
+
+<!-- ✅ VARIATIONS MODALS (One for each product) -->
+{% for product in products %}
+<div class="modal fade" id="variationsModal{{ product.id }}" tabindex="-1" aria-labelledby="variationsModalLabel{{ product.id }}">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="variationsModalLabel{{ product.id }}">
+                    <i class="bi bi-sliders"></i> Manage Variations - {{ product.product_name }}
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                
+                <!-- ✅ ADD NEW VARIATION FORM -->
+                <div class="card mb-4 border-success">
+                    <div class="card-header bg-success text-white">
+                        <h6 class="mb-0"><i class="bi bi-plus-circle"></i> Add New Variation</h6>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="{% url 'add_variation' product.id %}">
+                            {% csrf_token %}
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Variation Name *</label>
+                                    <input type="text" name="variation_name" class="form-control" placeholder="e.g., 0.5 KG, 1 KG, Large" required>
+                                    <small class="text-muted">Examples: "0.5 KG", "1 KG", "Family Pack"</small>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Price (Rs.) *</label>
+                                    <input type="number" name="variation_price" class="form-control" placeholder="500" required>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Original Price (Rs.)</label>
+                                    <input type="number" name="variation_demo_price" class="form-control" placeholder="600">
+                                    <small class="text-muted">Leave blank if no discount</small>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Stock Quantity</label>
+                                    <input type="number" name="stock_quantity" class="form-control" value="0" min="0">
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" name="is_available" id="isAvailable{{ product.id }}" checked>
+                                    <label class="form-check-label" for="isAvailable{{ product.id }}">
+                                        Available for customers
+                                    </label>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="bi bi-plus-circle"></i> Add Variation
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- ✅ EXISTING VARIATIONS LIST -->
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h6 class="mb-0"><i class="bi bi-list-ul"></i> Existing Variations ({{ product.variations.count }})</h6>
+                    </div>
+                    <div class="card-body">
+                        {% if product.variations.all %}
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Price</th>
+                                        <th>Stock</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for variation in product.variations.all %}
+                                    <tr>
+                                        <td><strong>{{ variation.variation_name }}</strong></td>
+                                        <td>
+                                            <span class="text-success fw-bold">Rs. {{ variation.variation_price }}</span>
+                                            {% if variation.discount_percentage > 0 %}
+                                                <br><small class="text-muted text-decoration-line-through">Rs. {{ variation.variation_demo_price }}</small>
+                                                <span class="badge bg-danger">{{ variation.discount_percentage }}% OFF</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if variation.stock_quantity > 0 %}
+                                                <span class="badge bg-info">{{ variation.stock_quantity }}</span>
+                                            {% else %}
+                                                <span class="badge bg-warning text-dark">Out of Stock</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if variation.is_available %}
+                                                <span class="badge bg-success">Available</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Hidden</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editVariationModal{{ variation.id }}">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <a href="{% url 'delete_variation' variation.id %}" class="btn btn-sm btn-danger" onclick="return confirm('Delete this variation?');">
+                                                <i class="bi bi-trash"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info text-center">
+                            <i class="bi bi-info-circle"></i> No variations added yet. Add your first variation above!
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ✅ EDIT VARIATION MODALS (One for each variation) -->
+{% for variation in product.variations.all %}
+<div class="modal fade" id="editVariationModal{{ variation.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title"><i class="bi bi-pencil"></i> Edit Variation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{% url 'edit_variation' variation.id %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Variation Name *</label>
+                        <input type="text" name="variation_name" class="form-control" value="{{ variation.variation_name }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Price (Rs.) *</label>
+                        <input type="number" name="variation_price" class="form-control" value="{{ variation.variation_price }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Original Price (Rs.)</label>
+                        <input type="number" name="variation_demo_price" class="form-control" value="{{ variation.variation_demo_price }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Stock Quantity</label>
+                        <input type="number" name="stock_quantity" class="form-control" value="{{ variation.stock_quantity }}" min="0">
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="is_available" id="editIsAvailable{{ variation.id }}" {% if variation.is_available %}checked{% endif %}>
+                            <label class="form-check-label" for="editIsAvailable{{ variation.id }}">
+                                Available for customers
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-check-circle"></i> Update Variation
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% endfor %}
+
 {% endblock %}

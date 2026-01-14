@@ -1,0 +1,150 @@
+{% extends "dashbase.html" %}
+
+{% block title %}Add Category - Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-plus-circle"></i> Add New Category</h1>
+    <a href="{% url 'manage_categories' %}" class="btn btn-secondary btn-dashboard">
+        <i class="bi bi-arrow-left"></i> Back to Categories
+    </a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="bi bi-tags"></i> Category Details</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <div class="col-md-8 mb-3">
+                            <label for="category_name" class="form-label">
+                                Category Name <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="category_name" 
+                                   name="category_name" 
+                                   placeholder="e.g., Biryani, Fast Food, Beverages"
+                                   required>
+                            <small class="text-muted">This will be displayed to customers</small>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="display_order" class="form-label">
+                                Display Order
+                            </label>
+                            <input type="number" 
+                                   class="form-control" 
+                                   id="display_order" 
+                                   name="display_order" 
+                                   value="0"
+                                   min="0">
+                            <small class="text-muted">Lower numbers first</small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="category_description" class="form-label">
+                            Description <small class="text-muted">(Optional)</small>
+                        </label>
+                        <textarea class="form-control" 
+                                  id="category_description" 
+                                  name="category_description" 
+                                  rows="3"
+                                  placeholder="Brief description of this category..."></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="category_image" class="form-label">
+                            Category Image <small class="text-muted">(Optional)</small>
+                        </label>
+                        <input type="file" 
+                               class="form-control" 
+                               id="category_image" 
+                               name="category_image" 
+                               accept="image/*">
+                        
+                        <!-- Image Preview -->
+                        <div id="imagePreview" class="mt-3" style="display: none;">
+                            <p class="text-muted mb-2">Preview:</p>
+                            <img id="preview" 
+                                 src="" 
+                                 alt="Preview" 
+                                 class="img-thumbnail" 
+                                 style="max-width: 200px; max-height: 200px; object-fit: cover;">
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" 
+                                   type="checkbox" 
+                                   id="is_active" 
+                                   name="is_active" 
+                                   checked>
+                            <label class="form-check-label" for="is_active">
+                                <strong>Active</strong> - Show this category on customer menu
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Example Preview -->
+                    <div class="alert alert-light border">
+                        <h6 class="mb-2"><i class="bi bi-lightbulb"></i> Examples:</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Category Name:</strong> Biryani<br>
+                                <strong>Description:</strong> Authentic rice dishes with aromatic spices
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Category Name:</strong> Fast Food<br>
+                                <strong>Description:</strong> Quick bites and snacks
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle"></i> Create Category
+                        </button>
+                        <a href="{% url 'manage_categories' %}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Image Preview
+document.getElementById('category_image').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('preview').src = e.target.result;
+            document.getElementById('imagePreview').style.display = 'block';
+        }
+        reader.readAsDataURL(file);
+    } else {
+        document.getElementById('imagePreview').style.display = 'none';
+    }
+});
+
+// Auto-generate slug preview
+document.getElementById('category_name').addEventListener('input', function(e) {
+    const name = e.target.value;
+    const slug = name.toLowerCase()
+                     .replace(/[^a-z0-9]+/g, '-')
+                     .replace(/^-+|-+$/g, '');
+    console.log('Slug preview:', slug);
+});
+</script>
+{% endblock %}

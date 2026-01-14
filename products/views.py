@@ -1,13 +1,15 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from .models import Product, Order
+from .models import Product,Category, Order, ProductVariation, OrderItem, ProductImage, CustomUser
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
-from django.utils.text import slugify  
-from .models import *
-# Create your views here.
+from django.utils.text import slugify
+from django.db.models import Sum
+from django.core.validators import  RegexValidator
 
-
+# ============================================
+# AUTHENTICATION VIEWS
+# ===========================================
 def login_page(request):
     if request.method == "POST":
         phone_number = request.POST.get('phone_number')
@@ -32,12 +34,28 @@ def logout_page(request):
     logout(request)
     return redirect('/login/')
 
+val_phoneNumber   = RegexValidator(
+    regex=r'^(?:(?:(?:\+|00)92)|0)3[0-6]\d\d{7}$',
+)
+
 def register(request):
+    val_pass = RegexValidator(
+    regex=r'^(?=.*[a-z])(?=.*[A-Z]).{8,}$')
     if request.method == "POST":
         first_name = request.POST.get('first_name')
         last_name = request.POST.get('last_name')
         phone_number = request.POST.get('phone_number')
+        try:
+            val_phoneNumber(phone_number)
+        except:
+            messages.info(request, "Enter a valid Pakistani mobile number (e.g. 03011234567 or +923011234567)")
+            return redirect('/register/')
         password = request.POST.get('password')
+        try:
+            val_pass(password)
+        except:
+            messages.info(request,"Password must be at least 8 characters long and contain at least one uppercase and one lowercase letter")
+            return redirect('/register/')
         
         if CustomUser.objects.filter(phone_number=phone_number).exists():
             messages.info(request, "Phone number already taken")
@@ -55,20 +73,38 @@ def register(request):
     
     return render(request, 'user/signup.html')
 
+# ============================================
+# PUBLIC VIEWS
+# ============================================
+
 def home(request):
-  
     latest_products = Product.objects.all().order_by('-created_at')[:3]
     total_products = Product.objects.count()
     
+    search_query = request.GET.get('search')
+    if search_query:
+        products = products.filter(product_name__icontains=search_query)
     context = {
         'latest_products': latest_products,
-        'total_products': total_products
+        'total_products': total_products,'search_query': search_query,
     }
     return render(request, 'user/home.html', context)
 
-
 def menu(request):
-    products = Product.objects.all()
+    """Menu page with category filtering"""
+    # Get all active categories
+    categories = Category.objects.filter(is_active=True).order_by('display_order', 'category_name')
+    
+    # Get category filter from URL
+    category_slug = request.GET.get('category')
+    selected_category = None
+    
+    # Filter products
+    products = Product.objects.filter(is_available=True)
+    
+    if category_slug:
+        selected_category = get_object_or_404(Category, category_slug=category_slug, is_active=True)
+        products = products.filter(category=selected_category)
     
     # Search functionality
     search_query = request.GET.get('search')
@@ -81,40 +117,222 @@ def menu(request):
         discount_percentage = 0
         if product.product_demo_price > product.product_price:
             discount_percentage = round(((product.product_demo_price - product.product_price) / product.product_demo_price) * 100)
+        
+        # Check if product has variations
+        has_variations = product.variations.filter(is_available=True).exists()
+        
         products_with_discount.append({
             'product': product,
-            'discount_percentage': discount_percentage
+            'discount_percentage': discount_percentage,
+            'has_variations': has_variations
         })
     
     context = {
+        'categories': categories,
+        'selected_category': selected_category,
         'products_with_discount': products_with_discount,
         'search_query': search_query
     }
     return render(request, 'user/Menu.html', context)
 
+# ============================================
+# CATEGORY MANAGEMENT VIEWS
+# ============================================
+
+@login_required
+def manage_categories(request):
+    """View and manage all categories"""
+    if not request.user.is_staff:
+        messages.error(request, 'Access denied! Staff access required.')
+        return redirect('home')
+    
+    categories = Category.objects.all().order_by('display_order', 'category_name')
+    
+    return render(request, 'restaurant/manage_categories.html', {
+        'categories': categories
+    })
+@login_required
+def add_category(request):
+    """Add new category"""
+    if not request.user.is_staff:
+        messages.error(request, 'Access denied! Staff access required.')
+        return redirect('home')
+    
+    if request.method == 'POST':
+        try:
+            category_name = request.POST.get('category_name')
+            category_description = request.POST.get('category_description', '')
+            display_order = request.POST.get('display_order', 0)
+            is_active = request.POST.get('is_active') == 'on'
+            
+            # Check if category already exists
+            if Category.objects.filter(category_name__iexact=category_name).exists():
+                messages.error(request, f'Category "{category_name}" already exists!')
+                return redirect('manage_categories')
+            
+            # Create category
+            category = Category.objects.create(
+                category_name=category_name,
+                category_slug=slugify(category_name),
+                category_description=category_description,
+                display_order=display_order,
+                is_active=is_active
+            )
+            
+            # Handle image upload
+            if request.FILES.get('category_image'):
+                category.category_image = request.FILES.get('category_image')
+                category.save()
+            
+            messages.success(request, f'Category "{category_name}" added successfully!')
+            return redirect('manage_categories')
+            
+        except Exception as e:
+            messages.error(request, f' Error adding category: {str(e)}')
+            return redirect('add_category')
+    
+    return render(request, 'restaurant/add_category.html')
+@login_required
+def edit_category(request, category_id):
+    """Edit existing category"""
+    if not request.user.is_staff:
+        messages.error(request, 'Access denied! Staff access required.')
+        return redirect('home')
+    
+    category = get_object_or_404(Category, id=category_id)
+    
+    if request.method == 'POST':
+        try:
+            category.category_name = request.POST.get('category_name')
+            category.category_description = request.POST.get('category_description', '')
+            category.display_order = request.POST.get('display_order', 0)
+            category.is_active = request.POST.get('is_active') == 'on'
+            category.category_slug = slugify(category.category_name)
+            
+            # Handle image upload
+            if request.FILES.get('category_image'):
+                # Delete old image if exists
+                if category.category_image:
+                    category.category_image.delete(save=False)
+                category.category_image = request.FILES.get('category_image')
+            
+            category.save()
+            messages.success(request, f'Category "{category.category_name}" updated successfully!')
+            return redirect('manage_categories')
+            
+        except Exception as e:
+            messages.error(request, f'Error updating category: {str(e)}')
+            return redirect('edit_category', category_id=category_id)
+    
+    return render(request, 'restaurant/edit_category.html', {'category': category})
+@login_required
+def delete_category(request, category_id):
+    """Delete category"""
+    if not request.user.is_staff:
+        messages.error(request, 'Access denied! Staff access required.')
+        return redirect('home')
+    
+    category = get_object_or_404(Category, id=category_id)
+    
+    # Check if category has products
+    product_count = category.products.count()
+    
+    if product_count > 0:
+        messages.warning(request, 
+            f'⚠️ Cannot delete "{category.category_name}" - it has {product_count} product(s). '
+            f'Please reassign or delete those products first.')
+        return redirect('manage_categories')
+    
+    
+    category_name = category.category_name
+    category.delete()
+    messages.success(request, f'Category "{category_name}" deleted successfully!')
+    return redirect('manage_categories')
+@login_required
+def toggle_category_status(request, category_id):
+    """Toggle category active/inactive status"""
+    if not request.user.is_staff:
+        messages.error(request, 'Access denied! Staff access required.')
+        return redirect('home')
+    
+    category = get_object_or_404(Category, id=category_id)
+    category.is_active = not category.is_active
+    category.save()
+    
+    status = "activated" if category.is_active else "deactivated"
+    messages.success(request, f'Category "{category.category_name}" {status}!')
+    return redirect('manage_categories')
+
+def product_detail(request, product_slug):
+    """Product detail page showing variations"""
+    product = get_object_or_404(Product, product_slug=product_slug)
+    variations = product.variations.filter(is_available=True).order_by('variation_price')
+    
+    # Calculate discount for main product
+    discount_percentage = 0
+    if product.product_demo_price > product.product_price:
+        discount_percentage = round(((product.product_demo_price - product.product_price) / product.product_demo_price) * 100)
+    
+    context = {
+        'product': product,
+        'variations': variations,
+        'discount_percentage': discount_percentage,
+    }
+    return render(request, 'user/product_detail.html', context)
+
 def about(request):
-    return render(request,'user/about.html')
+    return render(request, 'user/about.html')
+
+# ============================================
+# CART VIEWS - COMPLETE WITH VARIATIONS
+# ============================================
 
 @login_required(login_url='/login/')
 def cart_view(request):
-    
+    """Display cart with both regular products and variations"""
     cart = request.session.get('cart', {})
     cart_items = []
     total_amount = 0
     
-    for product_id, item_data in cart.items():
+    for cart_key, item_data in cart.items():
         try:
-            product = Product.objects.get(id=product_id)
-            quantity = item_data['quantity']
-            item_total = product.product_price * quantity
-            
-            cart_items.append({
-                'product': product,
-                'quantity': quantity,
-                'total_price': item_total
-            })
-            total_amount += item_total
-        except Product.DoesNotExist:
+            # Check if it's a variation or regular product
+            if 'variation_id' in item_data:
+                # Cart item with variation
+                variation = get_object_or_404(ProductVariation, id=item_data['variation_id'])
+                product = variation.product
+                quantity = item_data['quantity']
+                item_total = variation.variation_price * quantity
+                
+                cart_items.append({
+                    'cart_key': cart_key,
+                    'product': product,
+                    'variation': variation,
+                    'quantity': quantity,
+                    'price': variation.variation_price,
+                    'total_price': item_total,
+                    'has_variation': True
+                })
+                total_amount += item_total
+            else:
+                # Regular cart item without variation
+                product = get_object_or_404(Product, id=item_data['product_id'])
+                quantity = item_data['quantity']
+                item_total = product.product_price * quantity
+                
+                cart_items.append({
+                    'cart_key': cart_key,
+                    'product': product,
+                    'variation': None,
+                    'quantity': quantity,
+                    'price': product.product_price,
+                    'total_price': item_total,
+                    'has_variation': False
+                })
+                total_amount += item_total
+                
+        except (Product.DoesNotExist, ProductVariation.DoesNotExist):
+            # Skip invalid items
             continue
     
     context = {
@@ -122,61 +340,122 @@ def cart_view(request):
         'total_amount': total_amount
     }
     return render(request, 'user/cart.html', context)
+
 @login_required(login_url='/login/')
 def add_to_cart(request, product_id):
-    """Add item to cart"""
+    """Add regular product to cart (no variation)"""
     product = get_object_or_404(Product, id=product_id)
+    
+    # Check if product has variations - redirect to product detail
+    if product.variations.filter(is_available=True).exists():
+        messages.warning(request, f'{product.product_name} has size options. Please select a size.')
+        return redirect('product_detail', product_slug=product.product_slug)
+    
     cart = request.session.get('cart', {})
+    cart_key = f"product_{product_id}"
     
-    product_id_str = str(product_id)
+    # Get quantity from query parameter (default 1)
+    quantity = int(request.GET.get('quantity', 1))
     
-    if product_id_str in cart:
-        cart[product_id_str]['quantity'] += 1
+    if cart_key in cart:
+        cart[cart_key]['quantity'] += quantity
     else:
-        cart[product_id_str] = {
-            'quantity': 1,
+        cart[cart_key] = {
+            'product_id': product_id,
+            'quantity': quantity,
         }
     
     request.session['cart'] = cart
     request.session.modified = True
-    messages.success(request, f'{product.product_name} added to cart!')
-    return redirect('menu')
+    
+    # Check if "Buy Now" action
+    buy_now = request.GET.get('buy_now', 'false') == 'true'
+    
+    if buy_now:
+        messages.success(request, f'{product.product_name} added to cart!')
+        return redirect('checkout')
+    else:
+        messages.success(request, f'{product.product_name} added to cart!')
+        return redirect('menu')
+
 @login_required(login_url='/login/')
-def remove_from_cart(request, product_id):
+def add_to_cart_with_variation(request, product_id, variation_id):
+    """Add product with specific variation to cart"""
+    product = get_object_or_404(Product, id=product_id)
+    variation = get_object_or_404(ProductVariation, id=variation_id, product=product)
+    
+    if not variation.is_available:
+        messages.error(request, f'{variation.variation_name} is currently unavailable.')
+        return redirect('product_detail', product_slug=product.product_slug)
+    
+    cart = request.session.get('cart', {})
+    cart_key = f"product_{product_id}_var_{variation_id}"
+    
+    # Get quantity from query parameter (default 1)
+    quantity = int(request.GET.get('quantity', 1))
+    
+    if cart_key in cart:
+        cart[cart_key]['quantity'] += quantity
+    else:
+        cart[cart_key] = {
+            'product_id': product_id,
+            'variation_id': variation_id,
+            'quantity': quantity,
+        }
+    
+    request.session['cart'] = cart
+    request.session.modified = True
+    
+    # Check if "Buy Now" action
+    buy_now = request.GET.get('buy_now', 'false') == 'true'
+    
+    if buy_now:
+        messages.success(request, f'{product.product_name} ({variation.variation_name}) added to cart!')
+        return redirect('checkout')
+    else:
+        messages.success(request, f'{product.product_name} ({variation.variation_name}) added to cart!')
+        return redirect('menu')
+    
+@login_required(login_url='/login/')
+def remove_from_cart(request, cart_key):
     """Remove item from cart"""
     cart = request.session.get('cart', {})
-    product_id_str = str(product_id)
     
-    if product_id_str in cart:
-        del cart[product_id_str]
+    if cart_key in cart:
+        del cart[cart_key]
         request.session['cart'] = cart
         request.session.modified = True
         messages.success(request, 'Item removed from cart!')
     
     return redirect('cart')
+
 @login_required(login_url='/login/')
-def update_cart_quantity(request, product_id):
+def update_cart_quantity(request, cart_key):
+    """Update cart item quantity"""
     if request.method == 'POST':
         quantity = int(request.POST.get('quantity', 1))
         cart = request.session.get('cart', {})
-        product_id_str = str(product_id)
         
         if quantity > 0:
-            if product_id_str in cart:
-                # Update the quantity in the dictionary
-                cart[product_id_str]['quantity'] = quantity
+            if cart_key in cart:
+                cart[cart_key]['quantity'] = quantity
         else:
-            if product_id_str in cart:
-                del cart[product_id_str]
+            if cart_key in cart:
+                del cart[cart_key]
         
         request.session['cart'] = cart
         request.session.modified = True
         messages.success(request, 'Cart updated!')
     
     return redirect('cart')
+
+# ============================================
+# CHECKOUT VIEW - WITH VARIATIONS
+# ============================================
+
 @login_required(login_url='/login/')
 def checkout(request):
-    """Checkout page - Cash on Delivery only"""
+    """Checkout page with variation support"""
     cart = request.session.get('cart', {})
     
     if not cart:
@@ -186,47 +465,65 @@ def checkout(request):
     cart_items = []
     total_amount = 0
     
-    # Fix: Handle cart dictionary structure
-    for product_id, item_data in cart.items():
+    # Process cart items
+    for cart_key, item_data in cart.items():
         try:
-            product = get_object_or_404(Product, id=product_id)
-            
-            # Get quantity from dictionary
-            if isinstance(item_data, dict):
-                quantity = item_data.get('quantity', 1)
+            if 'variation_id' in item_data:
+                # Item with variation
+                variation = get_object_or_404(ProductVariation, id=item_data['variation_id'])
+                product = variation.product
+                quantity = item_data['quantity']
+                item_total = variation.variation_price * quantity
+                
+                cart_items.append({
+                    'product': product,
+                    'variation': variation,
+                    'quantity': quantity,
+                    'price': variation.variation_price,
+                    'total_price': item_total,
+                    'has_variation': True
+                })
+                total_amount += item_total
             else:
-                quantity = item_data  # Fallback if it's stored as int
-            
-            item_total = product.product_price * quantity
-            total_amount += item_total
-            
-            cart_items.append({
-                'product': product,
-                'quantity': quantity,
-                'total_price': item_total
-            })
-        except Product.DoesNotExist:
+                # Regular item
+                product = get_object_or_404(Product, id=item_data['product_id'])
+                quantity = item_data['quantity']
+                item_total = product.product_price * quantity
+                
+                cart_items.append({
+                    'product': product,
+                    'variation': None,
+                    'quantity': quantity,
+                    'price': product.product_price,
+                    'total_price': item_total,
+                    'has_variation': False
+                })
+                total_amount += item_total
+                
+        except (Product.DoesNotExist, ProductVariation.DoesNotExist):
             continue
     
     if request.method == 'POST':
-        # Get form data
         full_name = request.POST.get('full_name')
         phone_number = request.POST.get('phone_number')
+        try:
+            val_phoneNumber(phone_number)
+        except:
+            messages.info(request, "Enter a valid Pakistani mobile number (e.g. 03011234567 or +923011234567)")
+            return redirect('checkout')
         address = request.POST.get('address')
         notes = request.POST.get('notes', '')
         
-        # Validate required fields
         if not all([full_name, phone_number, address]):
             messages.error(request, 'Please fill all required fields!')
-            context = {
+            return render(request, 'user/checkout.html', {
                 'cart_items': cart_items,
                 'total_amount': total_amount
-            }
-            return render(request, 'user/checkout.html', context)
+            })
         
-        # Create Order (Cash on Delivery only)
+        # Create Order
         order = Order.objects.create(
-            customer=request.user if request.user.is_authenticated else None,
+            customer=request.user,
             customer_name=full_name,
             customer_phone=phone_number,
             customer_address=address,
@@ -237,58 +534,44 @@ def checkout(request):
         )
         
         # Create OrderItems
-        for product_id, item_data in cart.items():
+        for cart_key, item_data in cart.items():
             try:
-                product = get_object_or_404(Product, id=product_id)
-                
-                # Get quantity from dictionary
-                if isinstance(item_data, dict):
-                    quantity = item_data.get('quantity', 1)
+                if 'variation_id' in item_data:
+                    # Order item with variation
+                    variation = get_object_or_404(ProductVariation, id=item_data['variation_id'])
+                    OrderItem.objects.create(
+                        order=order,
+                        product=variation.product,
+                        quantity=item_data['quantity'],
+                        price=variation.variation_price,
+                        variation_name=variation.variation_name
+                    )
                 else:
-                    quantity = item_data
-                
-                OrderItem.objects.create(
-                    order=order,
-                    product=product,
-                    quantity=quantity,
-                    price=product.product_price
-                )
-            except Product.DoesNotExist:
+                    # Regular order item
+                    product = get_object_or_404(Product, id=item_data['product_id'])
+                    OrderItem.objects.create(
+                        order=order,
+                        product=product,
+                        quantity=item_data['quantity'],
+                        price=product.product_price
+                    )
+            except:
                 continue
         
         # Clear cart
         request.session['cart'] = {}
         request.session.modified = True
         
-        messages.success(request, f'🎉 Order #{order.id} placed successfully! We will deliver in 30-45 minutes. Pay cash on delivery.')
+        messages.success(request, f'🎉 Order #{order.id} placed successfully!')
         return redirect('home')
     
-    context = {
+    return render(request, 'user/checkout.html', {
         'cart_items': cart_items,
         'total_amount': total_amount
-    }
-    return render(request, 'user/checkout.html', context)
-def order_confirmation(request):
-    return render(request, 'user/order_confirmation.html')
-# Dashboard Views
-@login_required(login_url='/login/')
-def restaurant_dashboard(request):
-    if not request.user.is_staff:
-        messages.error(request, 'Access denied!')
-        return redirect('home')
-    """Restaurant owner dashboard"""
-    products = Product.objects.all()
-    orders = Order.objects.all().order_by('-created_at')[:10]  # Last 10 orders
-    total_products = products.count()
-    total_orders = orders.count()
-    
-    context = {
-        'products': products,
-        'orders': orders,
-        'total_products': total_products,
-        'total_orders': total_orders,
-    }
-    return render(request, 'restaurant/dashboard.html', context)
+    })
+# ============================================
+# PRODUCT CRUD
+# ============================================
 
 @login_required
 def manage_products(request):
@@ -298,90 +581,223 @@ def manage_products(request):
 
 @login_required
 def add_product(request):
-    """Add new product"""
-    if request.method == 'POST':
-        product_name = request.POST.get('name')
-        product_description = request.POST.get('description')
-        product_price = request.POST.get('price')
-        product_demo_price = request.POST.get('demo_price', product_price)
-        quantity = request.POST.get('quantity')
-        product_measuring = request.POST.get('product_measuring')
-        image = request.FILES.get('image')
-        
-        # Generate slug from product name
-        from django.utils.text import slugify
-        product_slug = slugify(product_name)
-        
-        product = Product.objects.create(
-            product_name=product_name,
-            product_slug=product_slug,
-            product_description=product_description,
-            product_price=product_price,
-            product_demo_price=product_demo_price,
-            quantity=quantity,
-            product_measuring=product_measuring
-        )
-        
-        # Add product image
-        if image:
-            ProductImage.objects.create(product=product, product_image=image)
-        
-        messages.success(request, 'Product added successfully!')
-        return redirect('manage_products')
+    """Add new product with variations"""
+    if not request.user.is_staff:
+        messages.error(request, 'Access denied! Staff access required.')
+        return redirect('home')
     
-    # Get measuring choices from model
-    measuring_choices = Product.MEASURING_CHOICES
+    categories = Category.objects.filter(is_active=True).order_by('display_order', 'category_name')
+    
+    if request.method == 'POST':
+        try:
+            # Get category
+            category_id = request.POST.get('category')
+            category = None
+            if category_id:
+                category = get_object_or_404(Category, id=category_id)
+            
+            # Create product
+            product = Product.objects.create(
+                category=category,
+                product_name=request.POST.get('name'),
+                product_slug=slugify(request.POST.get('name')),
+                product_description=request.POST.get('description'),
+                product_price=request.POST.get('price'),
+                product_demo_price=request.POST.get('demo_price', request.POST.get('price')),
+                quantity=request.POST.get('quantity'),
+                product_measuring=request.POST.get('product_measuring', 'NONE'),
+                is_featured=request.POST.get('is_featured') == 'on'
+            )
+            
+            # Handle image upload
+            if request.FILES.get('image'):
+                ProductImage.objects.create(
+                    product=product,
+                    product_image=request.FILES.get('image')
+                )
+            
+            #NEW: Handle variations if provided
+            variation_count = int(request.POST.get('variation_count', 0))
+            variations_added = 0
+            
+            for i in range(1, variation_count + 1):
+                variation_name = request.POST.get(f'variation_name_{i}')
+                variation_price = request.POST.get(f'variation_price_{i}')
+                variation_demo_price = request.POST.get(f'variation_demo_price_{i}')
+                stock_quantity = request.POST.get(f'stock_quantity_{i}', 0)
+                is_available = request.POST.get(f'is_available_{i}') == 'on'
+                
+                # Only create variation if name and price are provided
+                if variation_name and variation_price:
+                    ProductVariation.objects.create(
+                        product=product,
+                        variation_name=variation_name,
+                        variation_price=variation_price,
+                        variation_demo_price=variation_demo_price or variation_price,
+                        stock_quantity=stock_quantity,
+                        is_available=is_available
+                    )
+                    variations_added += 1
+            
+            success_msg = f'Product "{product.product_name}" added successfully!'
+            if variations_added > 0:
+                success_msg += f' {variations_added} variation(s) added.'
+            
+            messages.success(request, success_msg)
+            return redirect('manage_products')
+            
+        except Exception as e:
+            messages.error(request, f'Error adding product: {str(e)}')
+            return redirect('add_product')
     
     return render(request, 'restaurant/add_product.html', {
-        'measuring_choices': measuring_choices
+        'measuring_choices': Product.MEASURING_CHOICES,
+        'categories': categories
     })
-    
 @login_required
-def edit_product(request, product_id):
+def edit_product(request, product_slug):
     """Edit existing product"""
-    product = get_object_or_404(Product, id=product_id)
+    if not request.user.is_staff:
+        messages.error(request, 'Access denied! Staff access required.')
+        return redirect('home')
+    
+    product = get_object_or_404(Product, product_slug=product_slug)
+    categories = Category.objects.filter(is_active=True).order_by('display_order', 'category_name')
     
     if request.method == 'POST':
-        product.product_name = request.POST.get('name')
-        product.product_description = request.POST.get('description')
-        product.product_price = request.POST.get('price')
-        product.product_demo_price = request.POST.get('demo_price', product.product_price)
-        product.quantity = request.POST.get('quantity')
-        product.product_measuring = request.POST.get('product_measuring')
-        
-        # Update slug if name changed
-        product.product_slug = slugify(product.product_name)
-        
-        # Update image if new one is uploaded
-        if request.FILES.get('image'):
-            # Delete old images
-            product.images.all().delete()
-            # Add new image
-            ProductImage.objects.create(product=product, product_image=request.FILES.get('image'))
-        
-        product.save()
-        messages.success(request, 'Product updated successfully!')
-        return redirect('manage_products')
-    
-    # Get measuring choices from model
-    measuring_choices = Product.MEASURING_CHOICES
+        try:
+            # Update category
+            category_id = request.POST.get('category')
+            if category_id:
+                product.category = get_object_or_404(Category, id=category_id)
+            else:
+                product.category = None
+            
+            # Update product fields
+            product.product_name = request.POST.get('name')
+            product.product_description = request.POST.get('description')
+            product.product_price = request.POST.get('price')
+            product.product_demo_price = request.POST.get('demo_price', product.product_price)
+            product.quantity = request.POST.get('quantity')
+            product.product_measuring = request.POST.get('product_measuring', 'NONE')
+            product.product_slug = slugify(product.product_name)
+            
+            # Handle image upload
+            if request.FILES.get('image'):
+                # Delete old images
+                product.images.all().delete()
+                # Create new image
+                ProductImage.objects.create(
+                    product=product,
+                    product_image=request.FILES.get('image')
+                )
+            
+            product.save()
+            messages.success(request, f'Product "{product.product_name}" updated successfully!')
+            return redirect('manage_products')
+            
+        except Exception as e:
+            messages.error(request, f'Error updating product: {str(e)}')
+            return redirect('edit_product', product_slug=product_slug)
     
     return render(request, 'restaurant/edit_product.html', {
         'product': product,
-        'measuring_choices': measuring_choices
+        'measuring_choices': Product.MEASURING_CHOICES,
+        'categories': categories
     })
 @login_required
-def delete_product(request, product_id):
-
-    product = get_object_or_404(Product, id=product_id)
+def delete_product(request, product_slug):
+    """Delete product"""
+    product = get_object_or_404(Product, product_slug=product_slug)
     product.delete()
+    messages.success(request, 'Product deleted successfully!')
     return redirect('manage_products')
 
+# ============================================
+# VARIATION CRUD
+# ============================================
 
-def manage_orders(request):
-    """Admin view - all orders with filtering"""
-  
+@login_required
+def manage_variations(request, product_id):
+    """Manage variations for a product"""
+    product = get_object_or_404(Product, id=product_id)
+    variations = product.variations.all().order_by('variation_price')
+    return render(request, 'restaurant/manage_variations.html', {
+        'product': product,
+        'variations': variations
+    })
+
+@login_required
+def add_variation(request, product_id):
+    """Add new variation"""
+    product = get_object_or_404(Product, id=product_id)
     
+    if request.method == 'POST':
+        ProductVariation.objects.create(
+            product=product,
+            variation_name=request.POST.get('variation_name'),
+            variation_price=request.POST.get('variation_price'),
+            variation_demo_price=request.POST.get('variation_demo_price') or request.POST.get('variation_price'),
+            stock_quantity=request.POST.get('stock_quantity', 0),
+            is_available=request.POST.get('is_available') == 'on'
+        )
+        messages.success(request, 'Variation added successfully!')
+    
+    return redirect('manage_products')
+
+@login_required
+def edit_variation(request, variation_id):
+    """Edit variation"""
+    variation = get_object_or_404(ProductVariation, id=variation_id)
+    
+    if request.method == 'POST':
+        variation.variation_name = request.POST.get('variation_name')
+        variation.variation_price = request.POST.get('variation_price')
+        variation.variation_demo_price = request.POST.get('variation_demo_price') or variation.variation_price
+        variation.stock_quantity = request.POST.get('stock_quantity', 0)
+        variation.is_available = request.POST.get('is_available') == 'on'
+        variation.save()
+        messages.success(request, 'Variation updated successfully!')
+    
+    return redirect('manage_products')
+
+@login_required
+def delete_variation(request, variation_id):
+    """Delete variation"""
+    variation = get_object_or_404(ProductVariation, id=variation_id)
+    variation.delete()
+    messages.success(request, 'Variation deleted successfully!')
+    return redirect('manage_products')
+
+# ============================================
+# ORDER MANAGEMENT
+# ============================================
+
+@login_required(login_url='/login/')
+def restaurant_dashboard(request):
+    """Restaurant dashboard"""
+    if not request.user.is_staff:
+        messages.error(request, 'Access denied! Staff access required.')
+        return redirect('home')
+    
+    products = Product.objects.all()
+    recent_orders = Order.objects.all().order_by('-created_at')[:10]
+    total_products = products.count()
+    total_orders = Order.objects.count()
+    pending_orders_count = Order.objects.filter(status='pending').count()
+    total_revenue = Order.objects.filter(status='delivered').aggregate(total=Sum('total_amount'))['total'] or 0
+    
+    return render(request, 'restaurant/dashboard.html', {
+        'products': products,
+        'recent_orders': recent_orders,
+        'total_products': total_products,
+        'total_orders': total_orders,
+        'pending_orders_count': pending_orders_count,
+        'total_revenue': total_revenue,
+    })
+@login_required
+def manage_orders(request):
+    """Manage orders"""
     filter_status = request.GET.get('status', 'all')
     
     if filter_status == 'all':
@@ -389,19 +805,13 @@ def manage_orders(request):
     else:
         orders = Order.objects.filter(status=filter_status).order_by('-created_at')
     
-    context = {
+    return render(request, 'restaurant/manage_orders.html', {
         'orders': orders,
         'filter_status': filter_status
-    }
-    return render(request, 'restaurant/manage_orders.html', context)
-
+    })
 @login_required
 def update_order_status(request, order_id):
     """Update order status"""
-    # if not request.user.is_staff:
-    #     messages.error(request, 'Access denied!')
-    #     return redirect('home')
-    
     if request.method == 'POST':
         order = get_object_or_404(Order, id=order_id)
         new_status = request.POST.get('status')
@@ -409,29 +819,29 @@ def update_order_status(request, order_id):
         if new_status in dict(Order.STATUS_CHOICES):
             order.status = new_status
             order.save()
-            messages.success(request, f'Order #{order.id} status updated to {order.get_status_display()}')
-        else:
-            messages.error(request, 'Invalid status!')
+            messages.success(request, f'Order #{order.id} status updated to {order.get_status_display()}!')
     
     return redirect('manage_orders')
+
 @login_required(login_url='/login/')
 def my_orders(request):
-    """Customer view - their own orders separated by status"""
+    """Customer orders page"""
     all_orders = Order.objects.filter(customer=request.user).order_by('-created_at')
     
-    # Current orders: pending, confirmed, preparing, on_delivery
     current_orders = all_orders.filter(
         status__in=['pending', 'confirmed', 'preparing', 'on_delivery']
     )
     
-    # Previous orders: delivered, cancelled
     previous_orders = all_orders.filter(
         status__in=['delivered', 'cancelled']
     )
     
-    context = {
+    return render(request, 'user/myorders.html', {
         'orders': all_orders,
         'current_orders': current_orders,
         'previous_orders': previous_orders,
-    }
-    return render(request, 'user/myorders.html', context)
+    })
+    
+    
+    
+    

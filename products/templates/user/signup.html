@@ -1,6 +1,6 @@
 
 {% extends "boot.html" %}
-{% block title %}Login - Hussayn's{% endblock %}
+{% block title %}Register - Hussayn's{% endblock %}
 {% block content %}
 <div class="container mt-5">
     <div class="row justify-content-center">
@@ -10,7 +10,7 @@
                     <h3>Register a New Account</h3>
                 </div>
                 <div class="card-body">
-                    {% if messages %}
+                     {% if messages %}
                         {% for message in messages %}
                             <div class="alert alert-{{ message.tags }}">{{ message }}</div>
                         {% endfor %}
@@ -19,19 +19,19 @@
                         {% csrf_token %}
                         <div class="mb-3">
                             <label for="firstname" class="form-label">First Name</label>
-                            <input type="text" class="form-control" id="firstname" name="first_name" required>
+                            <input type="text" class="form-control" id="firstname" name="first_name" placeholder="Enter your first name" required>
                         </div>
                         <div class="mb-3">
                             <label for="lastname" class="form-label">Last Name</label>
-                            <input type="text" class="form-control" id="lastname" name="last_name" required>
+                            <input type="text" class="form-control" id="lastname" name="last_name" placeholder="Enter your last name" required>
                         </div>
                         <div class="mb-3">
                             <label for="phone_number" class="form-label">Phone Number</label>
-                            <input type="text" class="form-control" id="phone_number" name="phone_number" required>
+                            <input type="text" class="form-control" id="phone_number" placeholder="Enter a valid phone number e.g 03XXXXXXXXX" name="phone_number" required>
                         </div>
                         <div class="mb-3">
                             <label for="password" class="form-label">Password</label>
-                            <input type="password" class="form-control" id="password" name="password" required>
+                            <input type="password" class="form-control" id="password" name="password" placeholder="Enter a strong password" required>
                         </div>
                         <button type="submit" class="btn btn-primary w-100">Register</button>
                     </form>

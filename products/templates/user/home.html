@@ -14,17 +14,17 @@
   <div class="carousel-inner">
     <div class="carousel-item active">
       <img src="https://authenticroyal.com/wp-content/uploads/2024/05/How-to-Make-Chicken-Biryani-Video.jpg" class="d-block w-100" alt="Biryani">
-      <div class="carousel-caption d-none d-md-block">
+      <div class="carousel-caption">
         <h2 class="display-4 fw-bold">Authentic Biryani</h2>
         <p class="lead">Traditional flavors cooked to perfection</p>
         <a href="{% url 'menu' %}" class="btn btn-primary btn-lg">Order Now</a>
       </div>
     </div>
     <div class="carousel-item">
-      <img src="https://images.deliveryhero.io/image/fd-pk/LH/g66p-listing.jpg" class="d-block w-100" alt="Fast Food">
+      <img src="https://supermancooks.com/wp-content/uploads/2023/03/ribeye-steak-featured.jpg" class="d-block w-100" alt="Fast Food">
       <div class="carousel-caption d-none d-md-block">
-        <h2 class="display-4 fw-bold">Delicious Fast Food</h2>
-        <p class="lead">Quick bites for every craving</p>
+        <h2 class="display-4 fw-bold">Authentic Steak</h2>
+        <p class="lead">Savor the rich flavors of perfectly seared ribeye</p>
         <a href="{% url 'menu' %}" class="btn btn-primary btn-lg">Order Now</a>
       </div>
     </div>
@@ -54,6 +54,19 @@
     <p class="lead text-muted">Your Favorite Food Delivered Fast!</p>
     <div class="header-underline"></div>
   </div>
+  <div class="row justify-content-center mb-4">
+        <div class="col-md-6">
+            <form method="GET" action="{% url 'menu' %}" class="search-form">
+                <div class="input-group">
+                    <input type="text" class="form-control" name="search" placeholder="Search for dishes..." 
+                           value="{{ search_query|default:'' }}">
+                    <button class="btn btn-primary" type="submit">
+                        <i class="bi bi-search"></i> Search
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
   
   <div class="row align-items-center mb-5">
     <div class="col-md-6">
@@ -104,7 +117,7 @@
         </div>
         <div class="card-body">
           <h5 class="card-title fw-bold">{{ product.product_name }}</h5>
-          <p class="card-text text-muted">{{ product.product_description|truncatechars:80 }}</p>
+          <p class="card-text text-muted">{{ product.product_description|truncatechars:100 }}</p>
           <div class="d-flex justify-content-between align-items-center">
             <span class="h4 text-success mb-0">Rs. {{ product.product_price }}</span>
             <a href="{% url 'add_to_cart' product.id %}" class="btn btn-primary">

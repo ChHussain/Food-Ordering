@@ -37,9 +37,12 @@
                                     <tr>
                                         <td>
                                             <strong>{{ item.product.product_name }}</strong>
+                                            {% if item.has_variation %}
+                                                <br><small class="text-muted">Size: {{ item.variation.variation_name }}</small>
+                                            {% endif %}
                                         </td>
                                         <td>{{ item.quantity }}</td>
-                                        <td>Rs. {{ item.product.product_price }}</td>
+                                        <td>Rs. {{ item.price }}</td>
                                         <td><strong>Rs. {{ item.total_price }}</strong></td>
                                     </tr>
                                     {% endfor %}
@@ -121,4 +124,4 @@
     </div>
 </div>
 <br>
-{% endblock %}
+{% endblock %} 

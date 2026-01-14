@@ -34,18 +34,25 @@
                         <img src="https://via.placeholder.com/80" alt="No image" width="80" height="80">
                     {% endif %}
                 </td>
-                <td>{{ item.product.product_name }}</td>
-                <td>Rs.{{ item.product.product_price }}</td>
                 <td>
-                    <form method="POST" action="{% url 'update_cart_quantity' item.product.id %}" class="d-inline">
+                    <strong>{{ item.product.product_name }}</strong>
+                    {% if item.has_variation %}
+                        <br><small class="text-muted">
+                            <i class="bi bi-sliders"></i> Size: {{ item.variation.variation_name }}
+                        </small>
+                    {% endif %}
+                </td>
+                <td>Rs. {{ item.price }}</td>
+                <td>
+                    <form method="POST" action="{% url 'update_cart_quantity' item.cart_key %}" class="d-inline">
                         {% csrf_token %}
                         <input type="number" name="quantity" value="{{ item.quantity }}" min="1" max="99" class="form-control" style="width: 80px; display: inline-block;">
                         <button type="submit" class="btn btn-sm btn-primary">Update</button>
                     </form>
                 </td>
-                <td>Rs.{{ item.total_price }}</td>
+                <td>Rs. {{ item.total_price }}</td>
                 <td>
-                    <a href="{% url 'remove_from_cart' item.product.id %}" class="btn btn-danger btn-sm" onclick="return confirm('Remove this item from cart?');">Remove</a>
+                    <a href="{% url 'remove_from_cart' item.cart_key %}" class="btn btn-danger btn-sm" onclick="return confirm('Remove this item from cart?');">Remove</a>
                 </td>
             </tr>
             {% endfor %}
@@ -53,7 +60,7 @@
         <tfoot>
             <tr>
                 <td colspan="4" class="text-end"><strong>Total Amount:</strong></td>
-                    <td colspan="2"><strong class="text-success fs-5">Rs. {{ total_amount }}</strong></td>
+                <td colspan="2"><strong class="text-success fs-5">Rs. {{ total_amount }}</strong></td>
             </tr>
         </tfoot>
     </table>

@@ -107,8 +107,7 @@
                     <ul class="footer-links">
                         <li><a href="{% url 'home' %}"><i class="bi bi-chevron-right"></i> Home</a></li>
                         <li><a href="{% url 'menu' %}"><i class="bi bi-chevron-right"></i> Menu</a></li>
-                        <li><a href="#"><i class="bi bi-chevron-right"></i> About Us</a></li>
-                        <li><a href="#"><i class="bi bi-chevron-right"></i> Contact</a></li>
+                        <li><a href="{% url 'about' %}"><i class="bi bi-chevron-right"></i> About Us</a></li>
                         <li><a href="{% url 'cart' %}"><i class="bi bi-chevron-right"></i> Cart</a></li>
                     </ul>
                 </div>
@@ -117,7 +116,7 @@
                 <div class="col-lg-3 col-md-6 mb-4">
                     <h5 class="footer-heading mb-3">Customer Service</h5>
                     <ul class="footer-links">
-                        <li><a href="#"><i class="bi bi-chevron-right"></i> Track Order</a></li>
+                        <li><a href="{% url 'my_orders' %}"s><i class="bi bi-chevron-right"></i> Track Order</a></li>
                         <li><a href="#"><i class="bi bi-chevron-right"></i> FAQs</a></li>
                         <li><a href="#"><i class="bi bi-chevron-right"></i> Privacy Policy</a></li>
                         <li><a href="#"><i class="bi bi-chevron-right"></i> Terms & Conditions</a></li>
@@ -161,7 +160,6 @@
                 <div class="col-md-6 text-center text-md-end">
                     <p class="footer-payment mb-0">
                         <span class="me-2">We Accept:</span>
-                        <i class="bi bi-credit-card fs-5"></i>
                         <i class="bi bi-cash fs-5 ms-2"></i>
                     </p>
                 </div>

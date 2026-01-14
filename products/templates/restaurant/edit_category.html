@@ -1,0 +1,147 @@
+{% extends "dashbase.html" %}
+
+{% block title %}Edit Category - {{ category.category_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-pencil"></i> Edit Category</h1>
+    <a href="{% url 'manage_categories' %}" class="btn btn-secondary btn-dashboard">
+        <i class="bi bi-arrow-left"></i> Back to Categories
+    </a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="bi bi-tags"></i> Edit: {{ category.category_name }}</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <div class="col-md-8 mb-3">
+                            <label for="category_name" class="form-label">
+                                Category Name <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="category_name" 
+                                   name="category_name" 
+                                   value="{{ category.category_name }}"
+                                   required>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="display_order" class="form-label">
+                                Display Order
+                            </label>
+                            <input type="number" 
+                                   class="form-control" 
+                                   id="display_order" 
+                                   name="display_order" 
+                                   value="{{ category.display_order }}"
+                                   min="0">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="category_description" class="form-label">
+                            Description <small class="text-muted">(Optional)</small>
+                        </label>
+                        <textarea class="form-control" 
+                                  id="category_description" 
+                                  name="category_description" 
+                                  rows="3">{{ category.category_description }}</textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="category_image" class="form-label">
+                            Category Image
+                        </label>
+                        
+                        <!-- Current Image -->
+                        {% if category.category_image %}
+                        <div class="mb-3">
+                            <p class="text-muted mb-2">Current Image:</p>
+                            <img src="{{ category.category_image.url }}" 
+                                 alt="{{ category.category_name }}" 
+                                 class="img-thumbnail" 
+                                 style="max-width: 200px; max-height: 200px; object-fit: cover;">
+                        </div>
+                        {% endif %}
+                        
+                        <input type="file" 
+                               class="form-control" 
+                               id="category_image" 
+                               name="category_image" 
+                               accept="image/*">
+                        <small class="text-muted">Leave empty to keep current image</small>
+                        
+                        <!-- New Image Preview -->
+                        <div id="imagePreview" class="mt-3" style="display: none;">
+                            <p class="text-muted mb-2">New Image Preview:</p>
+                            <img id="preview" 
+                                 src="" 
+                                 alt="Preview" 
+                                 class="img-thumbnail" 
+                                 style="max-width: 200px; max-height: 200px; object-fit: cover;">
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" 
+                                   type="checkbox" 
+                                   id="is_active" 
+                                   name="is_active" 
+                                   {% if category.is_active %}checked{% endif %}>
+                            <label class="form-check-label" for="is_active">
+                                <strong>Active</strong> - Show this category on customer menu
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Category Stats -->
+                    <div class="alert alert-info">
+                        <h6><i class="bi bi-info-circle"></i> Category Statistics:</h6>
+                        <ul class="mb-0">
+                            <li><strong>Products:</strong> {{ category.product_count }}</li>
+                            <li><strong>Slug:</strong> {{ category.category_slug }}</li>
+                            <li><strong>Created:</strong> {{ category.created_at|date:"M d, Y h:i A" }}</li>
+                            <li><strong>Last Updated:</strong> {{ category.updated_at|date:"M d, Y h:i A" }}</li>
+                        </ul>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle"></i> Update Category
+                        </button>
+                        <a href="{% url 'manage_categories' %}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Image Preview
+document.getElementById('category_image').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('preview').src = e.target.result;
+            document.getElementById('imagePreview').style.display = 'block';
+        }
+        reader.readAsDataURL(file);
+    } else {
+        document.getElementById('imagePreview').style.display = 'none';
+    }
+});
+</script>
+{% endblock %}
