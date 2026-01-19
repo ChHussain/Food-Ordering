@@ -6,7 +6,7 @@
     <div class="row justify-content-center">
         <div class="col-md-6">
             <a class="login-logo" href="{% url 'home' %}">
-            <img src="{% static 'images/logo.png' %}" alt="Hussain's Restaurant" class="img-fluid mb-3">
+            <img src="{% static 'images/logo.png' %}" alt="Hussain's Restaurant">
             </a>
             <div class="card">
                 <div class="card-header text-center">
@@ -22,11 +22,11 @@
                         {% csrf_token %}
                         <div class="mb-3">
                             <label for="phone_number" class="form-label">Phone Number</label>
-                            <input type="text" class="form-control" id="phone_number" name="phone_number" required>
+                            <input type="text" class="form-control" id="phone_number" placeholder="eg., 03001234567" name="phone_number" required>
                         </div>
                         <div class="mb-3">
                             <label for="password" class="form-label">Password</label>
-                            <input type="password" class="form-control" id="password" name="password" required>
+                            <input type="password" class="form-control" id="password" placeholder="Enter your password" name="password" required>
                         </div>
                         <button type="submit" class="btn btn-primary" id="submitBtn">
                             <span class="spinner-border spinner-border-sm d-none"  role="status"aria-hidden="true"></span>

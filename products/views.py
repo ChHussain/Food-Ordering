@@ -84,9 +84,19 @@ def home(request):
     search_query = request.GET.get('search')
     if search_query:
         products = products.filter(product_name__icontains=search_query)
+    products_with_variations = []
+    for product in latest_products:
+        available_variations = product.variations.filter(is_available=True)
+        products_with_variations.append({
+            'product': product,
+            'variations': available_variations,
+            'has_variations': available_variations.exists()
+        })
     context = {
         'latest_products': latest_products,
-        'total_products': total_products,'search_query': search_query,
+        'total_products': total_products,
+        'products_with_variations': products_with_variations,  
+        'search_query': search_query,
     }
     return render(request, 'user/home.html', context)
 
@@ -110,6 +120,8 @@ def menu(request):
     search_query = request.GET.get('search')
     if search_query:
         products = products.filter(product_name__icontains=search_query)
+        categories = categories.filter(category_name__icontains=search_query)
+        categories
     
     # Calculate discount percentage for each product
     products_with_discount = []
@@ -239,7 +251,7 @@ def delete_category(request, category_id):
     
     if product_count > 0:
         messages.warning(request, 
-            f'⚠️ Cannot delete "{category.category_name}" - it has {product_count} product(s). '
+            f' Cannot delete "{category.category_name}" - it has {product_count} product(s). '
             f'Please reassign or delete those products first.')
         return redirect('manage_categories')
     
@@ -263,22 +275,6 @@ def toggle_category_status(request, category_id):
     messages.success(request, f'Category "{category.category_name}" {status}!')
     return redirect('manage_categories')
 
-def product_detail(request, product_slug):
-    """Product detail page showing variations"""
-    product = get_object_or_404(Product, product_slug=product_slug)
-    variations = product.variations.filter(is_available=True).order_by('variation_price')
-    
-    # Calculate discount for main product
-    discount_percentage = 0
-    if product.product_demo_price > product.product_price:
-        discount_percentage = round(((product.product_demo_price - product.product_price) / product.product_demo_price) * 100)
-    
-    context = {
-        'product': product,
-        'variations': variations,
-        'discount_percentage': discount_percentage,
-    }
-    return render(request, 'user/product_detail.html', context)
 
 def about(request):
     return render(request, 'user/about.html')
@@ -577,7 +573,15 @@ def checkout(request):
 def manage_products(request):
     """View all products"""
     products = Product.objects.all()
-    return render(request, 'restaurant/manage_products.html', {'products': products})
+    search_query = request.GET.get('search')
+    if search_query:
+        products = products.filter(product_name__icontains=search_query)
+    
+    context = {
+        'products': products,
+        'search_query': search_query,
+    }
+    return render(request, 'restaurant/manage_products.html', context)
 
 @login_required
 def add_product(request):
@@ -606,7 +610,6 @@ def add_product(request):
                 product_demo_price=request.POST.get('demo_price', request.POST.get('price')),
                 quantity=request.POST.get('quantity'),
                 product_measuring=request.POST.get('product_measuring', 'NONE'),
-                is_featured=request.POST.get('is_featured') == 'on'
             )
             
             # Handle image upload
@@ -624,7 +627,6 @@ def add_product(request):
                 variation_name = request.POST.get(f'variation_name_{i}')
                 variation_price = request.POST.get(f'variation_price_{i}')
                 variation_demo_price = request.POST.get(f'variation_demo_price_{i}')
-                stock_quantity = request.POST.get(f'stock_quantity_{i}', 0)
                 is_available = request.POST.get(f'is_available_{i}') == 'on'
                 
                 # Only create variation if name and price are provided
@@ -634,7 +636,6 @@ def add_product(request):
                         variation_name=variation_name,
                         variation_price=variation_price,
                         variation_demo_price=variation_demo_price or variation_price,
-                        stock_quantity=stock_quantity,
                         is_available=is_available
                     )
                     variations_added += 1
@@ -738,7 +739,6 @@ def add_variation(request, product_id):
             variation_name=request.POST.get('variation_name'),
             variation_price=request.POST.get('variation_price'),
             variation_demo_price=request.POST.get('variation_demo_price') or request.POST.get('variation_price'),
-            stock_quantity=request.POST.get('stock_quantity', 0),
             is_available=request.POST.get('is_available') == 'on'
         )
         messages.success(request, 'Variation added successfully!')
@@ -754,7 +754,6 @@ def edit_variation(request, variation_id):
         variation.variation_name = request.POST.get('variation_name')
         variation.variation_price = request.POST.get('variation_price')
         variation.variation_demo_price = request.POST.get('variation_demo_price') or variation.variation_price
-        variation.stock_quantity = request.POST.get('stock_quantity', 0)
         variation.is_available = request.POST.get('is_available') == 'on'
         variation.save()
         messages.success(request, 'Variation updated successfully!')
@@ -805,9 +804,12 @@ def manage_orders(request):
     else:
         orders = Order.objects.filter(status=filter_status).order_by('-created_at')
     
+    search_query = request.GET.get('search')
+    if search_query:
+        orders = orders.filter(id__icontains=search_query)
     return render(request, 'restaurant/manage_orders.html', {
         'orders': orders,
-        'filter_status': filter_status
+        'filter_status': filter_status,'search_query': search_query,
     })
 @login_required
 def update_order_status(request, order_id):

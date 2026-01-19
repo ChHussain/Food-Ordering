@@ -1,4 +1,4 @@
-import uuid
+
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from .manager import UserManager
@@ -16,7 +16,6 @@ class CustomUser(AbstractUser):
         return self.phone_number
 
 class BaseModel(models.Model):
-    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -70,7 +69,6 @@ class Product(BaseModel):
     quantity = models.CharField(max_length=50, null=True, blank=True)
     product_measuring = models.CharField(max_length=100, choices=MEASURING_CHOICES, default='NONE')
     is_available = models.BooleanField(default=True, help_text="Is product available for ordering?")
-    is_featured = models.BooleanField(default=False, help_text="Show in featured section?")
     
     def save(self, *args, **kwargs):
         """Auto-generate slug from product name if blank"""
@@ -97,7 +95,6 @@ class ProductVariation(BaseModel):
     variation_price = models.IntegerField(help_text="Price for this variation")
     variation_demo_price = models.IntegerField(null=True, blank=True, help_text="Original price (for discount display)")
     is_available = models.BooleanField(default=True)
-    stock_quantity = models.IntegerField(default=0, help_text="Available stock for this variation")
     
     class Meta:
         ordering = ['variation_price']

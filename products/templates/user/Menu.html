@@ -21,12 +21,12 @@
                     <button class="btn btn-primary" type="submit">
                         <i class="bi bi-search"></i> Search
                     </button>
-                </div>
+                </div>  
             </form>
         </div>
     </div>
 
-    <!-- ✅ NEW: Category Filter Pills -->
+    <!-- Category Filter Pills -->
     <div class="category-filter mb-4">
         <div class="d-flex justify-content-center flex-wrap gap-2">
             <!-- All Categories Button -->
@@ -99,7 +99,7 @@
                     </span>
                     {% endif %}
                     
-                    <!-- ✅ NEW: Category Badge -->
+                    <!--  Category Badge -->
                     {% if item.product.category %}
                     <span class="category-badge">
                         {{ item.product.category.category_name }}
@@ -183,7 +183,7 @@
 </div>
 
 
-<!-- ✅ PRODUCT DETAIL MODALS (One for each product) -->
+<!--PRODUCT DETAIL MODALS (One for each product) -->
 {% for item in products_with_discount %}
 <div class="modal fade" id="productModal{{ item.product.id }}" tabindex="-1" aria-labelledby="productModalLabel{{ item.product.id }}">
     <div class="modal-dialog modal-lg modal-dialog-centered">

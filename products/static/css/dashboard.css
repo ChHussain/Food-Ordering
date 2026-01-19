@@ -756,3 +756,12 @@ main.col-lg-10 {
 .gap-2 {
     gap: 0.5rem !important;
 }
+
+.variation-card {
+    border-left: 4px solid #007bff;
+    transition: all 0.3s ease;
+}
+
+.variation-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}

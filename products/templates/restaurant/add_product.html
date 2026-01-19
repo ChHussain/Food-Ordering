@@ -89,7 +89,7 @@
                         </div>
                     </div>
 
-                    <!-- ✅ NEW: Variations Section -->
+                    <!--Variations Section -->
                     <hr class="my-4">
                     <h5 class="border-bottom pb-2 mb-3">
                         <i class="bi bi-sliders"></i> Product Variations (Optional)
@@ -144,7 +144,7 @@ document.getElementById('image').addEventListener('change', function(e) {
     }
 });
 
-// ✅ NEW: Variation Management JavaScript
+//  Variation Management JavaScript
 let variationCounter = 0;
 
 function addVariation() {
@@ -180,10 +180,7 @@ function addVariation() {
                     <input type="number" name="variation_demo_price_${variationCounter}" class="form-control" placeholder="600">
                     <small class="text-muted">Leave blank if no discount</small>
                 </div>
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">Stock Quantity</label>
-                    <input type="number" name="stock_quantity_${variationCounter}" class="form-control" value="0" min="0">
-                </div>
+                
                 <div class="col-md-4 mb-3">
                     <label class="form-label d-block">Available?</label>
                     <div class="form-check form-switch mt-2">
@@ -224,14 +221,5 @@ document.getElementById('price').addEventListener('input', function() {
 });
 </script>
 
-<style>
-.variation-card {
-    border-left: 4px solid #007bff;
-    transition: all 0.3s ease;
-}
 
-.variation-card:hover {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-</style>
 {% endblock %}
