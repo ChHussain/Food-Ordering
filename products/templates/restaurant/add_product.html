@@ -347,6 +347,37 @@ function updatePrimaryAttribute(currentId) {
             checkbox.checked = false;
         }
     });
+    
+    // Refresh the attribute values display to show/hide price fields
+    const container = document.getElementById(`attribute_values_${currentId}`);
+    const isPrimary = document.getElementById(`is_primary_${currentId}`).checked;
+    
+    // Get all existing values
+    const existingValues = container.querySelectorAll('.attribute-value-row');
+    existingValues.forEach((row, index) => {
+        const valueId = index + 1;
+        const valueInput = row.querySelector('input[type="text"]');
+        const priceInput = row.querySelector('input[type="number"]');
+        const value = valueInput ? valueInput.value : '';
+        const price = priceInput ? priceInput.value : '';
+        
+        // Recreate the row with updated structure
+        row.innerHTML = `
+            <div class="col-md-${isPrimary ? '5' : '10'}">
+                <input type="text" name="attribute_value_${currentId}_${valueId}" class="form-control form-control-sm" placeholder="e.g., Small, Medium, Large" value="${value}">
+            </div>
+            ${isPrimary ? `
+            <div class="col-md-5">
+                <input type="number" name="attribute_price_${currentId}_${valueId}" class="form-control form-control-sm" placeholder="Price (Rs.)" value="${price}">
+            </div>
+            ` : ''}
+            <div class="col-md-2">
+                <button type="button" class="btn btn-sm btn-danger" onclick="removeAttributeValue(${currentId}, ${valueId})">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+        `;
+    });
 }
 
 let attributeValueCounters = {};
