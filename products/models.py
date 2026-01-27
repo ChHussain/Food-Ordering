@@ -88,6 +88,73 @@ class Product(BaseModel):
     
     def __str__(self):
         return self.product_name
+    
+    def generate_variants(self):
+        """Generate all possible variants from product attributes"""
+        if not self.is_variable:
+            return []
+        
+        from itertools import product as itertools_product
+        
+        # Get all attributes and their values
+        attributes = self.attributes.all().prefetch_related('values')
+        if not attributes:
+            return []
+        
+        # Get primary attribute for pricing
+        primary_attribute = attributes.filter(is_primary=True).first()
+        if not primary_attribute:
+            return []
+        
+        # Build combinations of attribute values
+        attribute_value_lists = []
+        for attr in attributes:
+            values = list(attr.values.all())
+            if values:
+                attribute_value_lists.append(values)
+        
+        if not attribute_value_lists:
+            return []
+        
+        # Generate all combinations
+        combinations = list(itertools_product(*attribute_value_lists))
+        
+        # Delete existing variants for this product
+        self.variants.all().delete()
+        
+        # Create variants for each combination
+        created_variants = []
+        for combo in combinations:
+            # Calculate price based on primary attribute
+            base_price = self.product_price
+            price_adjustment = 0
+            
+            for attr_value in combo:
+                if attr_value.attribute == primary_attribute:
+                    price_adjustment = attr_value.price_adjustment
+                    break
+            
+            variant_price = base_price + price_adjustment
+            variant_demo_price = self.product_demo_price + price_adjustment if self.product_demo_price else None
+            
+            # Create variant
+            variant = ProductVariant.objects.create(
+                product=self,
+                variant_price=variant_price,
+                variant_demo_price=variant_demo_price,
+                is_available=True
+            )
+            
+            # Link attribute values to variant
+            for attr_value in combo:
+                ProductVariantAttributeValue.objects.create(
+                    variant=variant,
+                    attribute_value=attr_value
+                )
+            
+            created_variants.append(variant)
+        
+        return created_variants
 
 class ProductVariation(BaseModel):
     """Different size/quantity variations of a product (e.g., 0.5kg, 1kg, 1.5kg)"""

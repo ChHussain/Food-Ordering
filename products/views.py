@@ -1,6 +1,9 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from .models import Product,Category, Order, ProductVariation, OrderItem, ProductImage, CustomUser
+from .models import (
+    Product, Category, Order, ProductVariation, OrderItem, ProductImage, CustomUser,
+    ProductAttribute, ProductAttributeValue, ProductVariant, ProductVariantAttributeValue
+)
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.utils.text import slugify
@@ -600,6 +603,9 @@ def add_product(request):
             if category_id:
                 category = get_object_or_404(Category, id=category_id)
             
+            # Check if it's a variable product
+            is_variable = request.POST.get('is_variable') == 'on'
+            
             # Create product
             product = Product.objects.create(
                 category=category,
@@ -610,6 +616,7 @@ def add_product(request):
                 product_demo_price=request.POST.get('demo_price', request.POST.get('price')),
                 quantity=request.POST.get('quantity'),
                 product_measuring=request.POST.get('product_measuring', 'NONE'),
+                is_variable=is_variable,
             )
             
             # Handle image upload
@@ -619,30 +626,71 @@ def add_product(request):
                     product_image=request.FILES.get('image')
                 )
             
-            #NEW: Handle variations if provided
-            variation_count = int(request.POST.get('variation_count', 0))
-            variations_added = 0
-            
-            for i in range(1, variation_count + 1):
-                variation_name = request.POST.get(f'variation_name_{i}')
-                variation_price = request.POST.get(f'variation_price_{i}')
-                variation_demo_price = request.POST.get(f'variation_demo_price_{i}')
-                is_available = request.POST.get(f'is_available_{i}') == 'on'
+            if is_variable:
+                # Handle attributes for variable products
+                attribute_count = int(request.POST.get('attribute_count', 0))
+                attributes_added = 0
                 
-                # Only create variation if name and price are provided
-                if variation_name and variation_price:
-                    ProductVariation.objects.create(
-                        product=product,
-                        variation_name=variation_name,
-                        variation_price=variation_price,
-                        variation_demo_price=variation_demo_price or variation_price,
-                        is_available=is_available
-                    )
-                    variations_added += 1
-            
-            success_msg = f'Product "{product.product_name}" added successfully!'
-            if variations_added > 0:
-                success_msg += f' {variations_added} variation(s) added.'
+                for i in range(1, attribute_count + 1):
+                    attribute_name = request.POST.get(f'attribute_name_{i}')
+                    is_primary = request.POST.get(f'is_primary_{i}') == 'on'
+                    
+                    if attribute_name:
+                        # Create attribute
+                        attribute = ProductAttribute.objects.create(
+                            product=product,
+                            name=attribute_name,
+                            is_primary=is_primary,
+                            display_order=i
+                        )
+                        
+                        # Add attribute values
+                        attribute_value_count = int(request.POST.get(f'attribute_value_count_{i}', 0))
+                        for j in range(1, attribute_value_count + 1):
+                            value_name = request.POST.get(f'attribute_value_{i}_{j}')
+                            price_adjustment = request.POST.get(f'attribute_price_{i}_{j}', 0)
+                            
+                            if value_name:
+                                ProductAttributeValue.objects.create(
+                                    attribute=attribute,
+                                    value=value_name,
+                                    price_adjustment=int(price_adjustment) if price_adjustment else 0,
+                                    display_order=j
+                                )
+                        
+                        attributes_added += 1
+                
+                # Generate variants automatically
+                if attributes_added > 0:
+                    variants = product.generate_variants()
+                    success_msg = f'Product "{product.product_name}" added successfully with {attributes_added} attribute(s) and {len(variants)} variant(s)!'
+                else:
+                    success_msg = f'Product "{product.product_name}" added successfully! Please add attributes in the admin panel.'
+            else:
+                # Handle simple variations if provided
+                variation_count = int(request.POST.get('variation_count', 0))
+                variations_added = 0
+                
+                for i in range(1, variation_count + 1):
+                    variation_name = request.POST.get(f'variation_name_{i}')
+                    variation_price = request.POST.get(f'variation_price_{i}')
+                    variation_demo_price = request.POST.get(f'variation_demo_price_{i}')
+                    is_available = request.POST.get(f'is_available_{i}') == 'on'
+                    
+                    # Only create variation if name and price are provided
+                    if variation_name and variation_price:
+                        ProductVariation.objects.create(
+                            product=product,
+                            variation_name=variation_name,
+                            variation_price=variation_price,
+                            variation_demo_price=variation_demo_price or variation_price,
+                            is_available=is_available
+                        )
+                        variations_added += 1
+                
+                success_msg = f'Product "{product.product_name}" added successfully!'
+                if variations_added > 0:
+                    success_msg += f' {variations_added} variation(s) added.'
             
             messages.success(request, success_msg)
             return redirect('manage_products')

@@ -89,32 +89,82 @@
                         </div>
                     </div>
 
-                    <!--Variations Section -->
+                    <!-- Product Type Selection -->
                     <hr class="my-4">
                     <h5 class="border-bottom pb-2 mb-3">
-                        <i class="bi bi-sliders"></i> Product Variations (Optional)
+                        <i class="bi bi-box"></i> Product Type
                     </h5>
                     
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle"></i> <strong>Tip:</strong> Add size variations like "0.5 KG", "1 KG", "Family Pack", etc. Each variation can have its own price.
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="is_variable" name="is_variable" onchange="toggleProductType()">
+                            <label class="form-check-label" for="is_variable">
+                                <strong>Variable Product</strong> - Product with multiple attributes (Size, Crust Type, etc.)
+                            </label>
+                        </div>
+                        <small class="text-muted">Enable this for products that have multiple variations based on different attributes.</small>
                     </div>
 
-                    <div id="variationsContainer" class="mb-3">
-                        <!-- Variations will be added here dynamically -->
+                    <!-- Simple Variations Section (shown when is_variable is false) -->
+                    <div id="simpleVariationsSection" style="display: block;">
+                        <hr class="my-4">
+                        <h5 class="border-bottom pb-2 mb-3">
+                            <i class="bi bi-sliders"></i> Product Variations (Optional)
+                        </h5>
+                        
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i> <strong>Tip:</strong> Add size variations like "0.5 KG", "1 KG", "Family Pack", etc. Each variation can have its own price.
+                        </div>
+
+                        <div id="variationsContainer" class="mb-3">
+                            <!-- Variations will be added here dynamically -->
+                        </div>
+
+                        <button type="button" class="btn btn-outline-primary mb-3" onclick="addVariation()">
+                            <i class="bi bi-plus-circle"></i> Add Variation
+                        </button>
+                        
+                        <!-- Hidden field to track variation count -->
+                        <input type="hidden" name="variation_count" id="variationCount" value="0">
+
+                        <div class="alert alert-warning">
+                            <i class="bi bi-lightbulb"></i> <strong>Note:</strong> You can also add variations later from the "Manage Products" page.
+                        </div>
                     </div>
 
-                    <button type="button" class="btn btn-outline-primary mb-3" onclick="addVariation()">
-                        <i class="bi bi-plus-circle"></i> Add Variation
-                    </button>
-                    
-                    <!-- Hidden field to track variation count -->
-                    <input type="hidden" name="variation_count" id="variationCount" value="0">
+                    <!-- Variable Product Attributes Section (shown when is_variable is true) -->
+                    <div id="variableProductSection" style="display: none;">
+                        <hr class="my-4">
+                        <h5 class="border-bottom pb-2 mb-3">
+                            <i class="bi bi-sliders"></i> Product Attributes
+                        </h5>
+                        
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i> <strong>How it works:</strong>
+                            <ul class="mb-0 mt-2">
+                                <li>Add a <strong>primary attribute</strong> (e.g., Size) that controls the base price</li>
+                                <li>Add <strong>secondary attributes</strong> (e.g., Crust Type, Toppings) that don't affect price</li>
+                                <li>The system will automatically generate all possible product variations</li>
+                            </ul>
+                        </div>
 
-                    <div class="alert alert-warning">
-                        <i class="bi bi-lightbulb"></i> <strong>Note:</strong> You can also add variations later from the "Manage Products" page.
+                        <div id="attributesContainer" class="mb-3">
+                            <!-- Attributes will be added here dynamically -->
+                        </div>
+
+                        <button type="button" class="btn btn-outline-primary mb-3" onclick="addAttribute()">
+                            <i class="bi bi-plus-circle"></i> Add Attribute
+                        </button>
+                        
+                        <!-- Hidden field to track attribute count -->
+                        <input type="hidden" name="attribute_count" id="attributeCount" value="0">
+
+                        <div class="alert alert-warning">
+                            <i class="bi bi-lightbulb"></i> <strong>Note:</strong> After adding attributes and saving the product, variants will be automatically generated in the admin panel.
+                        </div>
                     </div>
 
-                    <div class="d-grid gap-2 mt-4">
+                    <!--Variations Section -->                    <div class="d-grid gap-2 mt-4">
                         <button type="submit" class="btn btn-primary btn-lg">
                             <i class="bi bi-check-circle"></i> Add Product
                         </button>
@@ -143,6 +193,13 @@ document.getElementById('image').addEventListener('change', function(e) {
         document.getElementById('imagePreview').style.display = 'none';
     }
 });
+
+// Toggle between simple and variable product types
+function toggleProductType() {
+    const isVariable = document.getElementById('is_variable').checked;
+    document.getElementById('simpleVariationsSection').style.display = isVariable ? 'none' : 'block';
+    document.getElementById('variableProductSection').style.display = isVariable ? 'block' : 'none';
+}
 
 //  Variation Management JavaScript
 let variationCounter = 0;
@@ -210,6 +267,129 @@ function removeVariation(id) {
     // Update variation count
     const remainingVariations = document.querySelectorAll('.variation-card').length;
     document.getElementById('variationCount').value = remainingVariations;
+}
+
+// Attribute Management JavaScript
+let attributeCounter = 0;
+
+function addAttribute() {
+    attributeCounter++;
+    const container = document.getElementById('attributesContainer');
+    
+    const attributeDiv = document.createElement('div');
+    attributeDiv.className = 'card mb-3 attribute-card';
+    attributeDiv.id = `attribute_${attributeCounter}`;
+    
+    attributeDiv.innerHTML = `
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <h6 class="mb-0"><i class="bi bi-tag"></i> Attribute #${attributeCounter}</h6>
+            <button type="button" class="btn btn-sm btn-danger" onclick="removeAttribute(${attributeCounter})">
+                <i class="bi bi-trash"></i> Remove
+            </button>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Attribute Name <span class="text-danger">*</span></label>
+                    <input type="text" name="attribute_name_${attributeCounter}" class="form-control" placeholder="e.g., Size, Crust Type, Toppings">
+                    <small class="text-muted">Examples: "Size", "Crust Type", "Toppings"</small>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label d-block">Primary Attribute?</label>
+                    <div class="form-check form-switch mt-2">
+                        <input class="form-check-input primary-attribute-check" type="checkbox" name="is_primary_${attributeCounter}" id="is_primary_${attributeCounter}" onchange="updatePrimaryAttribute(${attributeCounter})">
+                        <label class="form-check-label" for="is_primary_${attributeCounter}">
+                            Controls base price (only one allowed)
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">Attribute Values</label>
+                <div id="attribute_values_${attributeCounter}" class="mb-2">
+                    <!-- Values will be added here -->
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addAttributeValue(${attributeCounter})">
+                    <i class="bi bi-plus"></i> Add Value
+                </button>
+                <input type="hidden" name="attribute_value_count_${attributeCounter}" id="attributeValueCount_${attributeCounter}" value="0">
+            </div>
+        </div>
+    `;
+    
+    container.appendChild(attributeDiv);
+    document.getElementById('attributeCount').value = attributeCounter;
+    
+    // Add initial value
+    addAttributeValue(attributeCounter);
+    
+    // Scroll to the new attribute
+    attributeDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function removeAttribute(id) {
+    const element = document.getElementById(`attribute_${id}`);
+    if (element) {
+        element.remove();
+    }
+    
+    // Update attribute count
+    const remainingAttributes = document.querySelectorAll('.attribute-card').length;
+    document.getElementById('attributeCount').value = remainingAttributes;
+}
+
+function updatePrimaryAttribute(currentId) {
+    // Ensure only one primary attribute is selected
+    const checkboxes = document.querySelectorAll('.primary-attribute-check');
+    checkboxes.forEach(checkbox => {
+        if (checkbox.id !== `is_primary_${currentId}`) {
+            checkbox.checked = false;
+        }
+    });
+}
+
+let attributeValueCounters = {};
+
+function addAttributeValue(attributeId) {
+    if (!attributeValueCounters[attributeId]) {
+        attributeValueCounters[attributeId] = 0;
+    }
+    attributeValueCounters[attributeId]++;
+    
+    const valueId = attributeValueCounters[attributeId];
+    const container = document.getElementById(`attribute_values_${attributeId}`);
+    const isPrimary = document.getElementById(`is_primary_${attributeId}`).checked;
+    
+    const valueDiv = document.createElement('div');
+    valueDiv.className = 'row mb-2 align-items-center attribute-value-row';
+    valueDiv.id = `attribute_value_${attributeId}_${valueId}`;
+    
+    valueDiv.innerHTML = `
+        <div class="col-md-${isPrimary ? '5' : '10'}">
+            <input type="text" name="attribute_value_${attributeId}_${valueId}" class="form-control form-control-sm" placeholder="e.g., Small, Medium, Large">
+        </div>
+        ${isPrimary ? `
+        <div class="col-md-5">
+            <input type="number" name="attribute_price_${attributeId}_${valueId}" class="form-control form-control-sm" placeholder="Price (Rs.)">
+        </div>
+        ` : ''}
+        <div class="col-md-2">
+            <button type="button" class="btn btn-sm btn-danger" onclick="removeAttributeValue(${attributeId}, ${valueId})">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+    `;
+    
+    container.appendChild(valueDiv);
+    document.getElementById(`attributeValueCount_${attributeId}`).value = attributeValueCounters[attributeId];
+}
+
+function removeAttributeValue(attributeId, valueId) {
+    const element = document.getElementById(`attribute_value_${attributeId}_${valueId}`);
+    if (element) {
+        element.remove();
+    }
 }
 
 // Auto-sync demo price with price if left empty (optional enhancement)
