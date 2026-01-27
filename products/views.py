@@ -288,15 +288,35 @@ def about(request):
 
 @login_required(login_url='/login/')
 def cart_view(request):
-    """Display cart with both regular products and variations"""
+    """Display cart with both regular products, variations, and variants"""
     cart = request.session.get('cart', {})
     cart_items = []
     total_amount = 0
     
     for cart_key, item_data in cart.items():
         try:
-            # Check if it's a variation or regular product
-            if 'variation_id' in item_data:
+            # Check if it's a variant (new multi-attribute system)
+            if 'variant_id' in item_data:
+                # Cart item with variant
+                variant = get_object_or_404(ProductVariant, id=item_data['variant_id'])
+                product = variant.product
+                quantity = item_data['quantity']
+                item_total = variant.variant_price * quantity
+                
+                cart_items.append({
+                    'cart_key': cart_key,
+                    'product': product,
+                    'variant': variant,
+                    'variation': None,
+                    'quantity': quantity,
+                    'price': variant.variant_price,
+                    'total_price': item_total,
+                    'has_variant': True,
+                    'has_variation': False
+                })
+                total_amount += item_total
+            # Check if it's a variation (old simple variation system)
+            elif 'variation_id' in item_data:
                 # Cart item with variation
                 variation = get_object_or_404(ProductVariation, id=item_data['variation_id'])
                 product = variation.product
@@ -306,15 +326,17 @@ def cart_view(request):
                 cart_items.append({
                     'cart_key': cart_key,
                     'product': product,
+                    'variant': None,
                     'variation': variation,
                     'quantity': quantity,
                     'price': variation.variation_price,
                     'total_price': item_total,
+                    'has_variant': False,
                     'has_variation': True
                 })
                 total_amount += item_total
             else:
-                # Regular cart item without variation
+                # Regular cart item without variation or variant
                 product = get_object_or_404(Product, id=item_data['product_id'])
                 quantity = item_data['quantity']
                 item_total = product.product_price * quantity
@@ -322,15 +344,17 @@ def cart_view(request):
                 cart_items.append({
                     'cart_key': cart_key,
                     'product': product,
+                    'variant': None,
                     'variation': None,
                     'quantity': quantity,
                     'price': product.product_price,
                     'total_price': item_total,
+                    'has_variant': False,
                     'has_variation': False
                 })
                 total_amount += item_total
                 
-        except (Product.DoesNotExist, ProductVariation.DoesNotExist):
+        except (Product.DoesNotExist, ProductVariation.DoesNotExist, ProductVariant.DoesNotExist):
             # Skip invalid items
             continue
     
@@ -467,7 +491,27 @@ def checkout(request):
     # Process cart items
     for cart_key, item_data in cart.items():
         try:
-            if 'variation_id' in item_data:
+            # Check if it's a variant (new multi-attribute system)
+            if 'variant_id' in item_data:
+                # Item with variant
+                variant = get_object_or_404(ProductVariant, id=item_data['variant_id'])
+                product = variant.product
+                quantity = item_data['quantity']
+                item_total = variant.variant_price * quantity
+                
+                cart_items.append({
+                    'product': product,
+                    'variant': variant,
+                    'variation': None,
+                    'quantity': quantity,
+                    'price': variant.variant_price,
+                    'total_price': item_total,
+                    'has_variant': True,
+                    'has_variation': False
+                })
+                total_amount += item_total
+            # Check if it's a variation (old simple variation system)
+            elif 'variation_id' in item_data:
                 # Item with variation
                 variation = get_object_or_404(ProductVariation, id=item_data['variation_id'])
                 product = variation.product
@@ -476,10 +520,12 @@ def checkout(request):
                 
                 cart_items.append({
                     'product': product,
+                    'variant': None,
                     'variation': variation,
                     'quantity': quantity,
                     'price': variation.variation_price,
                     'total_price': item_total,
+                    'has_variant': False,
                     'has_variation': True
                 })
                 total_amount += item_total
@@ -491,15 +537,17 @@ def checkout(request):
                 
                 cart_items.append({
                     'product': product,
+                    'variant': None,
                     'variation': None,
                     'quantity': quantity,
                     'price': product.product_price,
                     'total_price': item_total,
+                    'has_variant': False,
                     'has_variation': False
                 })
                 total_amount += item_total
                 
-        except (Product.DoesNotExist, ProductVariation.DoesNotExist):
+        except (Product.DoesNotExist, ProductVariation.DoesNotExist, ProductVariant.DoesNotExist):
             continue
     
     if request.method == 'POST':
@@ -535,7 +583,18 @@ def checkout(request):
         # Create OrderItems
         for cart_key, item_data in cart.items():
             try:
-                if 'variation_id' in item_data:
+                # Handle variant (new multi-attribute system)
+                if 'variant_id' in item_data:
+                    variant = get_object_or_404(ProductVariant, id=item_data['variant_id'])
+                    OrderItem.objects.create(
+                        order=order,
+                        product=variant.product,
+                        quantity=item_data['quantity'],
+                        price=variant.variant_price,
+                        variation_name=variant.variant_name
+                    )
+                # Handle variation (old simple variation system)
+                elif 'variation_id' in item_data:
                     # Order item with variation
                     variation = get_object_or_404(ProductVariation, id=item_data['variation_id'])
                     OrderItem.objects.create(
