@@ -1,5 +1,8 @@
 from django.contrib import admin
-from .models import CustomUser, Product, ProductImage, ProductVariation, Category, Order, OrderItem
+from .models import (
+    CustomUser, Product, ProductImage, ProductVariation, Category, Order, OrderItem,
+    ProductAttribute, ProductAttributeValue, ProductVariant, ProductVariantAttributeValue
+)
 
 # CustomUser Admin
 @admin.register(CustomUser)
@@ -28,12 +31,14 @@ class ProductAdmin(admin.ModelAdmin):
         'category',  # ✅ Keep this
         'product_price', 
         'is_available',  # ✅ Keep this
+        'is_variable',  # ✅ NEW: Show if product has attributes
         # ❌ REMOVED: 'is_featured'
         'created_at'
     ]
     list_filter = [
         'category', 
         'is_available',  # ✅ Keep this
+        'is_variable',  # ✅ NEW: Filter by variable products
         # ❌ REMOVED: 'is_featured'
         'created_at'
     ]
@@ -41,6 +46,7 @@ class ProductAdmin(admin.ModelAdmin):
     prepopulated_fields = {'product_slug': ('product_name',)}
     list_editable = [
         'is_available',  # ✅ Keep this
+        'is_variable',  # ✅ NEW: Quick toggle for variable products
         # ❌ REMOVED: 'is_featured'
     ]
     inlines = [ProductImageInline, ProductVariationInline]
@@ -116,3 +122,54 @@ class ProductImageAdmin(admin.ModelAdmin):
     list_display = ['product', 'product_image', 'created_at']
     list_filter = ['created_at']
     search_fields = ['product__product_name']
+
+# Product Attribute Value Inline
+class ProductAttributeValueInline(admin.TabularInline):
+    model = ProductAttributeValue
+    extra = 1
+    fields = ['value', 'price_adjustment', 'display_order']
+
+# Product Attribute Admin
+@admin.register(ProductAttribute)
+class ProductAttributeAdmin(admin.ModelAdmin):
+    list_display = ['product', 'name', 'is_primary', 'display_order']
+    list_filter = ['is_primary', 'product']
+    search_fields = ['product__product_name', 'name']
+    list_editable = ['is_primary', 'display_order']
+    inlines = [ProductAttributeValueInline]
+    ordering = ['product', 'display_order']
+
+# Product Attribute Value Admin
+@admin.register(ProductAttributeValue)
+class ProductAttributeValueAdmin(admin.ModelAdmin):
+    list_display = ['attribute', 'value', 'price_adjustment', 'display_order']
+    list_filter = ['attribute']
+    search_fields = ['attribute__name', 'value']
+    list_editable = ['price_adjustment', 'display_order']
+    ordering = ['attribute', 'display_order']
+
+# Product Variant Attribute Value Inline
+class ProductVariantAttributeValueInline(admin.TabularInline):
+    model = ProductVariantAttributeValue
+    extra = 0
+    fields = ['attribute_value']
+    readonly_fields = ['attribute_value']
+    can_delete = False
+
+# Product Variant Admin
+@admin.register(ProductVariant)
+class ProductVariantAdmin(admin.ModelAdmin):
+    list_display = ['product', 'variant_name', 'sku', 'variant_price', 'is_available', 'discount_percentage']
+    list_filter = ['is_available', 'product']
+    search_fields = ['product__product_name', 'sku']
+    list_editable = ['is_available']
+    readonly_fields = ['sku']
+    inlines = [ProductVariantAttributeValueInline]
+    ordering = ['product', 'variant_price']
+
+# Product Variant Attribute Value Admin
+@admin.register(ProductVariantAttributeValue)
+class ProductVariantAttributeValueAdmin(admin.ModelAdmin):
+    list_display = ['variant', 'attribute_value']
+    list_filter = ['variant__product', 'attribute_value__attribute']
+    search_fields = ['variant__product__product_name', 'attribute_value__value']

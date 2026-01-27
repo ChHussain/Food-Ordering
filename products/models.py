@@ -3,6 +3,8 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from .manager import UserManager
 from django.utils.text import slugify
+from itertools import product as itertools_product
+import time
 
 class CustomUser(AbstractUser):
     username = None
@@ -69,6 +71,7 @@ class Product(BaseModel):
     quantity = models.CharField(max_length=50, null=True, blank=True)
     product_measuring = models.CharField(max_length=100, choices=MEASURING_CHOICES, default='NONE')
     is_available = models.BooleanField(default=True, help_text="Is product available for ordering?")
+    is_variable = models.BooleanField(default=False, help_text="Is this a variable product with attributes?")
     
     def save(self, *args, **kwargs):
         """Auto-generate slug from product name if blank"""
@@ -87,6 +90,71 @@ class Product(BaseModel):
     
     def __str__(self):
         return self.product_name
+    
+    def generate_variants(self):
+        """Generate all possible variants from product attributes"""
+        if not self.is_variable:
+            return []
+        
+        # Get all attributes and their values
+        attributes = self.attributes.all().prefetch_related('values')
+        if not attributes:
+            return []
+        
+        # Get primary attribute for pricing
+        primary_attribute = attributes.filter(is_primary=True).first()
+        if not primary_attribute:
+            return []
+        
+        # Build combinations of attribute values
+        attribute_value_lists = []
+        for attr in attributes:
+            values = list(attr.values.all())
+            if values:
+                attribute_value_lists.append(values)
+        
+        if not attribute_value_lists:
+            return []
+        
+        # Generate all combinations
+        combinations = list(itertools_product(*attribute_value_lists))
+        
+        # Delete existing variants for this product
+        self.variants.all().delete()
+        
+        # Create variants for each combination
+        created_variants = []
+        for combo in combinations:
+            # Calculate price based on primary attribute
+            base_price = self.product_price
+            price_adjustment = 0
+            
+            for attr_value in combo:
+                if attr_value.attribute == primary_attribute:
+                    price_adjustment = attr_value.price_adjustment
+                    break
+            
+            variant_price = base_price + price_adjustment
+            variant_demo_price = self.product_demo_price + price_adjustment if self.product_demo_price else None
+            
+            # Create variant
+            variant = ProductVariant.objects.create(
+                product=self,
+                variant_price=variant_price,
+                variant_demo_price=variant_demo_price,
+                is_available=True
+            )
+            
+            # Link attribute values to variant
+            for attr_value in combo:
+                ProductVariantAttributeValue.objects.create(
+                    variant=variant,
+                    attribute_value=attr_value
+                )
+            
+            created_variants.append(variant)
+        
+        return created_variants
 
 class ProductVariation(BaseModel):
     """Different size/quantity variations of a product (e.g., 0.5kg, 1kg, 1.5kg)"""
@@ -109,6 +177,91 @@ class ProductVariation(BaseModel):
         if self.variation_demo_price and self.variation_demo_price > self.variation_price:
             return round(((self.variation_demo_price - self.variation_price) / self.variation_demo_price) * 100)
         return 0
+
+class ProductAttribute(BaseModel):
+    """Attributes for variable products (e.g., Size, Crust Type, Toppings)"""
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='attributes')
+    name = models.CharField(max_length=100, help_text="Attribute name (e.g., Size, Crust Type)")
+    is_primary = models.BooleanField(default=False, help_text="Primary attribute controls base price")
+    display_order = models.IntegerField(default=0, help_text="Display order for attributes")
+    
+    class Meta:
+        ordering = ['display_order', 'name']
+        unique_together = ['product', 'name']
+    
+    def __str__(self):
+        return f"{self.product.product_name} - {self.name}"
+
+class ProductAttributeValue(BaseModel):
+    """Values for product attributes (e.g., Small, Medium, Large for Size)"""
+    attribute = models.ForeignKey(ProductAttribute, on_delete=models.CASCADE, related_name='values')
+    value = models.CharField(max_length=100, help_text="Attribute value (e.g., Small, Medium, Large)")
+    price_adjustment = models.IntegerField(default=0, help_text="Price adjustment for this value (only for primary attribute)")
+    display_order = models.IntegerField(default=0, help_text="Display order for values")
+    
+    class Meta:
+        ordering = ['display_order', 'value']
+        unique_together = ['attribute', 'value']
+    
+    def __str__(self):
+        return f"{self.attribute.name}: {self.value}"
+
+class ProductVariant(BaseModel):
+    """Generated variants combining attribute values (e.g., Small + Thin Crust)"""
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='variants')
+    sku = models.CharField(max_length=100, unique=True, blank=True, help_text="Stock Keeping Unit")
+    variant_price = models.IntegerField(help_text="Final price for this variant")
+    variant_demo_price = models.IntegerField(null=True, blank=True, help_text="Original price (for discount display)")
+    is_available = models.BooleanField(default=True)
+    
+    class Meta:
+        ordering = ['variant_price']
+    
+    def save(self, *args, **kwargs):
+        """Auto-generate SKU if blank"""
+        if not self.sku:
+            # Generate SKU from product slug and variant attributes
+            base_sku = f"{self.product.product_slug[:20]}"
+            if self.pk:
+                self.sku = f"{base_sku}-{self.pk}"
+            else:
+                # For new variants, use a temporary SKU
+                self.sku = f"{base_sku}-{int(time.time())}"
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        attribute_values = self.attribute_values.all()
+        if attribute_values:
+            attrs = ", ".join([f"{av.attribute_value.attribute.name}: {av.attribute_value.value}" 
+                              for av in attribute_values])
+            return f"{self.product.product_name} ({attrs})"
+        return f"{self.product.product_name} - Variant #{self.id}"
+    
+    @property
+    def discount_percentage(self):
+        """Calculate discount percentage for this variant"""
+        if self.variant_demo_price and self.variant_demo_price > self.variant_price:
+            return round(((self.variant_demo_price - self.variant_price) / self.variant_demo_price) * 100)
+        return 0
+    
+    @property
+    def variant_name(self):
+        """Human-readable name for the variant"""
+        attribute_values = self.attribute_values.all()
+        if attribute_values:
+            return " - ".join([av.attribute_value.value for av in attribute_values])
+        return f"Variant #{self.id}"
+
+class ProductVariantAttributeValue(BaseModel):
+    """Junction table connecting variants to their attribute values"""
+    variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE, related_name='attribute_values')
+    attribute_value = models.ForeignKey(ProductAttributeValue, on_delete=models.CASCADE, related_name='variants')
+    
+    class Meta:
+        unique_together = ['variant', 'attribute_value']
+    
+    def __str__(self):
+        return f"{self.variant} - {self.attribute_value}"
 
 class ProductImage(BaseModel):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')

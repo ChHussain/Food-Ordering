@@ -1,6 +1,9 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from .models import Product,Category, Order, ProductVariation, OrderItem, ProductImage, CustomUser
+from .models import (
+    Product, Category, Order, ProductVariation, OrderItem, ProductImage, CustomUser,
+    ProductAttribute, ProductAttributeValue, ProductVariant, ProductVariantAttributeValue
+)
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.utils.text import slugify
@@ -285,15 +288,35 @@ def about(request):
 
 @login_required(login_url='/login/')
 def cart_view(request):
-    """Display cart with both regular products and variations"""
+    """Display cart with both regular products, variations, and variants"""
     cart = request.session.get('cart', {})
     cart_items = []
     total_amount = 0
     
     for cart_key, item_data in cart.items():
         try:
-            # Check if it's a variation or regular product
-            if 'variation_id' in item_data:
+            # Check if it's a variant (new multi-attribute system)
+            if 'variant_id' in item_data:
+                # Cart item with variant
+                variant = get_object_or_404(ProductVariant, id=item_data['variant_id'])
+                product = variant.product
+                quantity = item_data['quantity']
+                item_total = variant.variant_price * quantity
+                
+                cart_items.append({
+                    'cart_key': cart_key,
+                    'product': product,
+                    'variant': variant,
+                    'variation': None,
+                    'quantity': quantity,
+                    'price': variant.variant_price,
+                    'total_price': item_total,
+                    'has_variant': True,
+                    'has_variation': False
+                })
+                total_amount += item_total
+            # Check if it's a variation (old simple variation system)
+            elif 'variation_id' in item_data:
                 # Cart item with variation
                 variation = get_object_or_404(ProductVariation, id=item_data['variation_id'])
                 product = variation.product
@@ -303,15 +326,17 @@ def cart_view(request):
                 cart_items.append({
                     'cart_key': cart_key,
                     'product': product,
+                    'variant': None,
                     'variation': variation,
                     'quantity': quantity,
                     'price': variation.variation_price,
                     'total_price': item_total,
+                    'has_variant': False,
                     'has_variation': True
                 })
                 total_amount += item_total
             else:
-                # Regular cart item without variation
+                # Regular cart item without variation or variant
                 product = get_object_or_404(Product, id=item_data['product_id'])
                 quantity = item_data['quantity']
                 item_total = product.product_price * quantity
@@ -319,15 +344,17 @@ def cart_view(request):
                 cart_items.append({
                     'cart_key': cart_key,
                     'product': product,
+                    'variant': None,
                     'variation': None,
                     'quantity': quantity,
                     'price': product.product_price,
                     'total_price': item_total,
+                    'has_variant': False,
                     'has_variation': False
                 })
                 total_amount += item_total
                 
-        except (Product.DoesNotExist, ProductVariation.DoesNotExist):
+        except (Product.DoesNotExist, ProductVariation.DoesNotExist, ProductVariant.DoesNotExist):
             # Skip invalid items
             continue
     
@@ -464,7 +491,27 @@ def checkout(request):
     # Process cart items
     for cart_key, item_data in cart.items():
         try:
-            if 'variation_id' in item_data:
+            # Check if it's a variant (new multi-attribute system)
+            if 'variant_id' in item_data:
+                # Item with variant
+                variant = get_object_or_404(ProductVariant, id=item_data['variant_id'])
+                product = variant.product
+                quantity = item_data['quantity']
+                item_total = variant.variant_price * quantity
+                
+                cart_items.append({
+                    'product': product,
+                    'variant': variant,
+                    'variation': None,
+                    'quantity': quantity,
+                    'price': variant.variant_price,
+                    'total_price': item_total,
+                    'has_variant': True,
+                    'has_variation': False
+                })
+                total_amount += item_total
+            # Check if it's a variation (old simple variation system)
+            elif 'variation_id' in item_data:
                 # Item with variation
                 variation = get_object_or_404(ProductVariation, id=item_data['variation_id'])
                 product = variation.product
@@ -473,10 +520,12 @@ def checkout(request):
                 
                 cart_items.append({
                     'product': product,
+                    'variant': None,
                     'variation': variation,
                     'quantity': quantity,
                     'price': variation.variation_price,
                     'total_price': item_total,
+                    'has_variant': False,
                     'has_variation': True
                 })
                 total_amount += item_total
@@ -488,15 +537,17 @@ def checkout(request):
                 
                 cart_items.append({
                     'product': product,
+                    'variant': None,
                     'variation': None,
                     'quantity': quantity,
                     'price': product.product_price,
                     'total_price': item_total,
+                    'has_variant': False,
                     'has_variation': False
                 })
                 total_amount += item_total
                 
-        except (Product.DoesNotExist, ProductVariation.DoesNotExist):
+        except (Product.DoesNotExist, ProductVariation.DoesNotExist, ProductVariant.DoesNotExist):
             continue
     
     if request.method == 'POST':
@@ -532,7 +583,18 @@ def checkout(request):
         # Create OrderItems
         for cart_key, item_data in cart.items():
             try:
-                if 'variation_id' in item_data:
+                # Handle variant (new multi-attribute system)
+                if 'variant_id' in item_data:
+                    variant = get_object_or_404(ProductVariant, id=item_data['variant_id'])
+                    OrderItem.objects.create(
+                        order=order,
+                        product=variant.product,
+                        quantity=item_data['quantity'],
+                        price=variant.variant_price,
+                        variation_name=variant.variant_name
+                    )
+                # Handle variation (old simple variation system)
+                elif 'variation_id' in item_data:
                     # Order item with variation
                     variation = get_object_or_404(ProductVariation, id=item_data['variation_id'])
                     OrderItem.objects.create(
@@ -600,6 +662,9 @@ def add_product(request):
             if category_id:
                 category = get_object_or_404(Category, id=category_id)
             
+            # Check if it's a variable product
+            is_variable = request.POST.get('is_variable') == 'on'
+            
             # Create product
             product = Product.objects.create(
                 category=category,
@@ -610,6 +675,7 @@ def add_product(request):
                 product_demo_price=request.POST.get('demo_price', request.POST.get('price')),
                 quantity=request.POST.get('quantity'),
                 product_measuring=request.POST.get('product_measuring', 'NONE'),
+                is_variable=is_variable,
             )
             
             # Handle image upload
@@ -619,30 +685,77 @@ def add_product(request):
                     product_image=request.FILES.get('image')
                 )
             
-            #NEW: Handle variations if provided
-            variation_count = int(request.POST.get('variation_count', 0))
-            variations_added = 0
-            
-            for i in range(1, variation_count + 1):
-                variation_name = request.POST.get(f'variation_name_{i}')
-                variation_price = request.POST.get(f'variation_price_{i}')
-                variation_demo_price = request.POST.get(f'variation_demo_price_{i}')
-                is_available = request.POST.get(f'is_available_{i}') == 'on'
+            if is_variable:
+                # Handle attributes for variable products
+                attribute_count = int(request.POST.get('attribute_count', 0))
+                attributes_added = 0
                 
-                # Only create variation if name and price are provided
-                if variation_name and variation_price:
-                    ProductVariation.objects.create(
-                        product=product,
-                        variation_name=variation_name,
-                        variation_price=variation_price,
-                        variation_demo_price=variation_demo_price or variation_price,
-                        is_available=is_available
-                    )
-                    variations_added += 1
-            
-            success_msg = f'Product "{product.product_name}" added successfully!'
-            if variations_added > 0:
-                success_msg += f' {variations_added} variation(s) added.'
+                for i in range(1, attribute_count + 1):
+                    attribute_name = request.POST.get(f'attribute_name_{i}')
+                    is_primary = request.POST.get(f'is_primary_{i}') == 'on'
+                    
+                    if attribute_name:
+                        # Create attribute
+                        attribute = ProductAttribute.objects.create(
+                            product=product,
+                            name=attribute_name,
+                            is_primary=is_primary,
+                            display_order=i
+                        )
+                        
+                        # Add attribute values
+                        attribute_value_count = int(request.POST.get(f'attribute_value_count_{i}', 0))
+                        for j in range(1, attribute_value_count + 1):
+                            value_name = request.POST.get(f'attribute_value_{i}_{j}')
+                            price_adjustment = request.POST.get(f'attribute_price_{i}_{j}', '0')
+                            
+                            if value_name:
+                                # Safely convert price_adjustment to int
+                                try:
+                                    price_adj_value = int(price_adjustment) if price_adjustment else 0
+                                except (ValueError, TypeError):
+                                    price_adj_value = 0
+                                
+                                ProductAttributeValue.objects.create(
+                                    attribute=attribute,
+                                    value=value_name,
+                                    price_adjustment=price_adj_value,
+                                    display_order=j
+                                )
+                        
+                        attributes_added += 1
+                
+                # Generate variants automatically
+                if attributes_added > 0:
+                    variants = product.generate_variants()
+                    success_msg = f'Product "{product.product_name}" added successfully with {attributes_added} attribute(s) and {len(variants)} variant(s)!'
+                else:
+                    success_msg = f'Product "{product.product_name}" added successfully! Please add attributes in the admin panel.'
+            else:
+                # Handle simple variations if provided
+                variation_count = int(request.POST.get('variation_count', 0))
+                variations_added = 0
+                
+                for i in range(1, variation_count + 1):
+                    variation_name = request.POST.get(f'variation_name_{i}')
+                    variation_price = request.POST.get(f'variation_price_{i}')
+                    variation_demo_price = request.POST.get(f'variation_demo_price_{i}')
+                    is_available = request.POST.get(f'is_available_{i}') == 'on'
+                    
+                    # Only create variation if name and price are provided
+                    if variation_name and variation_price:
+                        ProductVariation.objects.create(
+                            product=product,
+                            variation_name=variation_name,
+                            variation_price=variation_price,
+                            variation_demo_price=variation_demo_price or variation_price,
+                            is_available=is_available
+                        )
+                        variations_added += 1
+                
+                success_msg = f'Product "{product.product_name}" added successfully!'
+                if variations_added > 0:
+                    success_msg += f' {variations_added} variation(s) added.'
             
             messages.success(request, success_msg)
             return redirect('manage_products')
