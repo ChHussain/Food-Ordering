@@ -3,6 +3,8 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from .manager import UserManager
 from django.utils.text import slugify
+from itertools import product as itertools_product
+import time
 
 class CustomUser(AbstractUser):
     username = None
@@ -93,8 +95,6 @@ class Product(BaseModel):
         """Generate all possible variants from product attributes"""
         if not self.is_variable:
             return []
-        
-        from itertools import product as itertools_product
         
         # Get all attributes and their values
         attributes = self.attributes.all().prefetch_related('values')
@@ -226,7 +226,6 @@ class ProductVariant(BaseModel):
                 self.sku = f"{base_sku}-{self.pk}"
             else:
                 # For new variants, use a temporary SKU
-                import time
                 self.sku = f"{base_sku}-{int(time.time())}"
         super().save(*args, **kwargs)
     
