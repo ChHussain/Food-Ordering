@@ -707,13 +707,19 @@ def add_product(request):
                         attribute_value_count = int(request.POST.get(f'attribute_value_count_{i}', 0))
                         for j in range(1, attribute_value_count + 1):
                             value_name = request.POST.get(f'attribute_value_{i}_{j}')
-                            price_adjustment = request.POST.get(f'attribute_price_{i}_{j}', 0)
+                            price_adjustment = request.POST.get(f'attribute_price_{i}_{j}', '0')
                             
                             if value_name:
+                                # Safely convert price_adjustment to int
+                                try:
+                                    price_adj_value = int(price_adjustment) if price_adjustment else 0
+                                except (ValueError, TypeError):
+                                    price_adj_value = 0
+                                
                                 ProductAttributeValue.objects.create(
                                     attribute=attribute,
                                     value=value_name,
-                                    price_adjustment=int(price_adjustment) if price_adjustment else 0,
+                                    price_adjustment=price_adj_value,
                                     display_order=j
                                 )
                         
