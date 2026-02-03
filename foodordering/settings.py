@@ -39,7 +39,9 @@ else:
         ALLOWED_HOSTS = [
             'localhost',
             '127.0.0.1',
-            '.app.github.dev',  # Allow all GitHub Codespaces domains
+            '.app.github.dev',
+            '.onrender.com',
+            'https://food-ordering-1-21f4.onrender.com/'  # Allow all GitHub Codespaces domains
         ]
     
 # SECURITY WARNING: keep the secret key used in production secret!
