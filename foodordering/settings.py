@@ -17,27 +17,30 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import os
 from pathlib import Path
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SECURITY WARNING: keep the secret key used in production secret!
-# Read from environment; fall back to a dev key if not set.
 SECRET_KEY = os.getenv(
     "SECRET_KEY",
     "django-insecure-h61!l#^d!y)3u93uzyos1kphrjsr_o#y&3&o%glsloy_wy(h4i",
 )
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv("DEBUG", "True") == "True"
+# DEFAULT TO False FOR SAFETY
+DEBUG = os.getenv("DEBUG", "False") == "True"
 
-# Comma-separated list from env, e.g. ".onrender.com,hussainshafiq.me,localhost,127.0.0.1"
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",") if not DEBUG else [
+# Just hostnames, comma-separated in env
+DEFAULT_ALLOWED = [
     "localhost",
     "127.0.0.1",
-    "food-ordering-1-21f4.onrender.com",
-    "hussainshafiq.me",
-    "https://food-ordering-1-21f4.onrender.com/"
 ]
+
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",") if not DEBUG else DEFAULT_ALLOWED
+
+# SECURITY WARNING: keep the secret key used in production secret!
+# Read from environment; fall back to a dev key if not set.
+
+
+# SECURITY WARNING: don't run with debug turned on in production!
+
 # Application definition
 
 INSTALLED_APPS = [
