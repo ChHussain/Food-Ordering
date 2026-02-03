@@ -34,6 +34,7 @@ DEBUG = os.getenv("DEBUG", "True") == "True"
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",") if not DEBUG else [
     "localhost",
     "127.0.0.1",
+    "food-ordering-1-21f4.onrender.com",
 ]
 # Application definition
 
