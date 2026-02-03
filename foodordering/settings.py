@@ -24,17 +24,16 @@ SECRET_KEY = os.getenv(
     "django-insecure-h61!l#^d!y)3u93uzyos1kphrjsr_o#y&3&o%glsloy_wy(h4i",
 )
 
-# DEFAULT TO False FOR SAFETY
+# Default to False in production; override to True only on your local machine.
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
-# Just hostnames, comma-separated in env
-DEFAULT_ALLOWED = [
-    "localhost",
-    "127.0.0.1",
-]
-
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",") if not DEBUG else DEFAULT_ALLOWED
-
+if DEBUG:
+    ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+else:
+    # Read comma-separated hosts from env; strip spaces and ignore empties
+    raw_hosts = os.getenv("ALLOWED_HOSTS", "")
+    ALLOWED_HOSTS = [h.strip() for h in raw_hosts.split(",") if h.strip()]
+    
 # SECURITY WARNING: keep the secret key used in production secret!
 # Read from environment; fall back to a dev key if not set.
 
