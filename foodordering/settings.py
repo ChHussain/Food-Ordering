@@ -34,6 +34,14 @@ else:
     raw_hosts = os.getenv("ALLOWED_HOSTS", "")
     ALLOWED_HOSTS = [h.strip() for h in raw_hosts.split(",") if h.strip()]
     
+    # Add GitHub Codespaces domain
+    if not ALLOWED_HOSTS:
+        ALLOWED_HOSTS = [
+            'localhost',
+            '127.0.0.1',
+            '.app.github.dev',  # Allow all GitHub Codespaces domains
+        ]
+    
 # SECURITY WARNING: keep the secret key used in production secret!
 # Read from environment; fall back to a dev key if not set.
 
