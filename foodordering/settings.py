@@ -65,8 +65,34 @@ INSTALLED_APPS = [
     'cloudinary_storage',
     'cloudinary',
     'products',
+    'storages',
 ]
+USE_SUPABASE_STORAGE = os.getenv("USE_SUPABASE_STORAGE", "false").lower() == "true"
 
+if USE_SUPABASE_STORAGE:
+    AWS_ACCESS_KEY_ID = os.getenv("SUPABASE_S3_ACCESS_KEY")
+    AWS_SECRET_ACCESS_KEY = os.getenv("SUPABASE_S3_SECRET_KEY")
+    AWS_STORAGE_BUCKET_NAME = os.getenv("SUPABASE_STORAGE_BUCKET", "product-images")
+    AWS_S3_REGION_NAME = os.getenv("SUPABASE_S3_REGION", "ap-northeast-2")
+    AWS_S3_ENDPOINT_URL = os.getenv("SUPABASE_S3_ENDPOINT")
+    AWS_S3_ADDRESSING_STYLE = "path"
+    AWS_DEFAULT_ACL = None
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_QUERYSTRING_AUTH = False
+
+    SUPABASE_PROJECT_REF = os.getenv("SUPABASE_PROJECT_REF")
+    AWS_S3_CUSTOM_DOMAIN = (
+        f"{SUPABASE_PROJECT_REF}.supabase.co/storage/v1/object/public/{AWS_STORAGE_BUCKET_NAME}"
+    )
+
+    DEFAULT_FILE_STORAGE = "foodordering.storage_backends.MediaStorage"
+    MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
+elif DEBUG:
+    MEDIA_URL = '/media/'
+    MEDIA_ROOT = BASE_DIR / 'media'
+    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+else:
+    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 
 MIDDLEWARE = [
