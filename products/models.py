@@ -74,18 +74,17 @@ class Product(BaseModel):
     is_variable = models.BooleanField(default=False, help_text="Is this a variable product with attributes?")
     
     def save(self, *args, **kwargs):
-        """Ensure a unique product slug based on name/slug."""
-        base_slug = slugify(self.product_slug or self.product_name)
-        if not base_slug:
-            base_slug = f"product-{int(time.time())}"
-
-        unique_slug = base_slug
-        counter = 1
-        while Product.objects.filter(product_slug=unique_slug).exclude(pk=self.pk).exists():
-            unique_slug = f"{base_slug}-{counter}"
-            counter += 1
-
-        self.product_slug = unique_slug
+        """Auto-generate slug from product name if blank"""
+        if not self.product_slug:
+            base_slug = slugify(self.product_name)
+            self.product_slug = base_slug
+            
+            # Handle duplicate slugs (only if product exists in DB)
+            if self.pk:
+                counter = 1
+                while Product.objects.filter(product_slug=self.product_slug).exclude(pk=self.pk).exists():
+                    self.product_slug = f"{base_slug}-{counter}"
+                    counter += 1
         
         super().save(*args, **kwargs)
     
