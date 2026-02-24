@@ -16,9 +16,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 import os
 from pathlib import Path
-import cloudinary
-import cloudinary.uploader
-import cloudinary.api
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -26,47 +24,37 @@ SECRET_KEY = os.getenv(
     "SECRET_KEY",
     "django-insecure-h61!l#^d!y)3u93uzyos1kphrjsr_o#y&3&o%glsloy_wy(h4i",
 )
-
-# Default to False in production; override to True only on your local machine.
-DEBUG = os.getenv("DEBUG", "False") == "True"
+DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
 if DEBUG:
-    ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+    ALLOWED_HOSTS = [
+        "localhost",
+        "127.0.0.1",
+        ".app.github.dev",
+        ".onrender.com",
+        "food-ordering-1-21f4.onrender.com",
+    ]
 else:
-    # Read comma-separated hosts from env; strip spaces and ignore empties
     raw_hosts = os.getenv("ALLOWED_HOSTS", "")
     ALLOWED_HOSTS = [h.strip() for h in raw_hosts.split(",") if h.strip()]
-    
-    # Add GitHub Codespaces domain
     if not ALLOWED_HOSTS:
         ALLOWED_HOSTS = [
-            'localhost',
-            '127.0.0.1',
-            '.app.github.dev',
-            '.onrender.com',
-            'https://food-ordering-1-21f4.onrender.com/'  # Allow all GitHub Codespaces domains
+            "localhost",
+            "127.0.0.1",
+            ".app.github.dev",
+            ".onrender.com",
+            "food-ordering-1-21f4.onrender.com",
         ]
-    
-# SECURITY WARNING: keep the secret key used in production secret!
-# Read from environment; fall back to a dev key if not set.
 
-
-# SECURITY WARNING: don't run with debug turned on in production!
-
-# Application definition
-
-INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'cloudinary_storage',
-    'cloudinary',
-    'products',
-    'storages',
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:8000",
+    "https://localhost:8000",
+    "http://127.0.0.1:8000",
+    "https://127.0.0.1:8000",
+    "https://food-ordering-1-21f4.onrender.com",
+    "https://*.app.github.dev",
 ]
+
 USE_SUPABASE_STORAGE = os.getenv("USE_SUPABASE_STORAGE", "false").lower() == "true"
 
 if USE_SUPABASE_STORAGE:
@@ -84,15 +72,49 @@ if USE_SUPABASE_STORAGE:
     AWS_S3_CUSTOM_DOMAIN = (
         f"{SUPABASE_PROJECT_REF}.supabase.co/storage/v1/object/public/{AWS_STORAGE_BUCKET_NAME}"
     )
-
-    DEFAULT_FILE_STORAGE = "foodordering.storage_backends.MediaStorage"
     MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
+    STORAGES = {
+        "default": {
+            "BACKEND": "foodordering.storage_backends.MediaStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
 elif DEBUG:
-    MEDIA_URL = '/media/'
-    MEDIA_ROOT = BASE_DIR / 'media'
-    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+    MEDIA_URL = "/media/"
+    MEDIA_ROOT = BASE_DIR / "media"
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
 else:
-    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+    STORAGES = {
+        "default": {
+            "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
+
+
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    'cloudinary_storage',
+    'cloudinary',
+    'products',
+    'storages',
+]
 
 
 MIDDLEWARE = [
@@ -141,20 +163,8 @@ AUTH_USER_MODEL = 'products.CustomUser'
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'products' / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Cloudinary Configuration
-CLOUDINARY_STORAGE = {
-    'CLOUDINARY_URL': os.getenv('CLOUDINARY_URL')
-}
 
-# Media files - Use Cloudinary in production
-if DEBUG:
-    MEDIA_URL = '/media/'
-    MEDIA_ROOT = BASE_DIR / 'media'
-    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
-else:
-    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators

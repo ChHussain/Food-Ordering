@@ -9,6 +9,7 @@ from django.contrib import messages
 from django.utils.text import slugify
 from django.db.models import Sum
 from django.core.validators import  RegexValidator
+from django.http import Http404
 
 # ============================================
 # AUTHENTICATION VIEWS
@@ -645,6 +646,14 @@ def manage_products(request):
     }
     return render(request, 'restaurant/manage_products.html', context)
 
+
+def _get_product_by_slug(product_slug):
+    products = Product.objects.filter(product_slug=product_slug).order_by('id')
+    product = products.first()
+    if not product:
+        raise Http404("No Product matches the given query.")
+    return product, products.count()
+
 @login_required
 def add_product(request):
     """Add new product with variations"""
@@ -669,7 +678,6 @@ def add_product(request):
             product = Product.objects.create(
                 category=category,
                 product_name=request.POST.get('name'),
-                product_slug=slugify(request.POST.get('name')),
                 product_description=request.POST.get('description'),
                 product_price=request.POST.get('price'),
                 product_demo_price=request.POST.get('demo_price', request.POST.get('price')),
@@ -775,7 +783,9 @@ def edit_product(request, product_slug):
         messages.error(request, 'Access denied! Staff access required.')
         return redirect('home')
     
-    product = get_object_or_404(Product, product_slug=product_slug)
+    product, duplicate_count = _get_product_by_slug(product_slug)
+    if duplicate_count > 1:
+        messages.warning(request, f'Multiple products were using slug "{product_slug}". Editing the earliest matching record.')
     categories = Category.objects.filter(is_active=True).order_by('display_order', 'category_name')
     
     if request.method == 'POST':
@@ -794,7 +804,7 @@ def edit_product(request, product_slug):
             product.product_demo_price = request.POST.get('demo_price', product.product_price)
             product.quantity = request.POST.get('quantity')
             product.product_measuring = request.POST.get('product_measuring', 'NONE')
-            product.product_slug = slugify(product.product_name)
+            product.product_slug = ""
             
             # Handle image upload
             if request.FILES.get('image'):
@@ -822,7 +832,9 @@ def edit_product(request, product_slug):
 @login_required
 def delete_product(request, product_slug):
     """Delete product"""
-    product = get_object_or_404(Product, product_slug=product_slug)
+    product, duplicate_count = _get_product_by_slug(product_slug)
+    if duplicate_count > 1:
+        messages.warning(request, f'Multiple products were using slug "{product_slug}". Deleted the earliest matching record.')
     product.delete()
     messages.success(request, 'Product deleted successfully!')
     return redirect('manage_products')
