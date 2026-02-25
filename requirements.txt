@@ -3,3 +3,4 @@ Pillow>=10.0
 gunicorn
 whitenoise
 django-storages[boto3]>=1.14.0
+psycopg2-binary
